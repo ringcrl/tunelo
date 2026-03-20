@@ -14,7 +14,7 @@ repository = "https://github.com/jiweiyuan/tunelo"
 
 [workspace.dependencies]
 # Async runtime
-tokio = { version = "1", features = ["rt-multi-thread", "io-util", "macros", "net", "time", "sync", "signal", "fs"] }
+tokio = { version = "1", features = ["rt-multi-thread", "io-util", "macros", "net", "time", "sync", "signal", "fs", "process"] }
 
 # QUIC
 quinn = "0.11"

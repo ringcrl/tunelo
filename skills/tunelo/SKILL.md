@@ -26,21 +26,33 @@ If `tunelo` is not found after install, the binary is at `/usr/local/bin/tunelo`
 
 ## Commands
 
-### Expose a local HTTP service
+### Expose a local port
 
 ```bash
-tunelo http 3000                # Expose port 3000 → get public HTTPS URL
-tunelo http 5173                # React/Vite dev server
-tunelo http 8080                # Any local service
-tunelo http 3000 --private      # Require access code to visit
+tunelo port 3000                # Expose port 3000 → get public HTTPS URL
+tunelo port 5173                # React/Vite dev server
+tunelo port 8080                # Any local service
+tunelo port 3000 --password     # Auto-generate a password
+tunelo port 3000 --password mysecret  # Set a specific password
 ```
+
+### Run a command and tunnel it
+
+```bash
+tunelo port 3000 -- pnpm dev    # Start pnpm dev, wait for port 3000, then tunnel
+tunelo port 3000 -- next start  # Start Next.js and tunnel it
+tunelo port 5173 -- vite        # Start Vite and tunnel it
+```
+
+The child process gets `PORT` set in its environment. Tunelo waits for the port to accept connections before creating the tunnel. When either the command or the tunnel stops, the other is cleaned up.
 
 ### Serve files with web explorer
 
 ```bash
 tunelo serve .                  # Current directory → public URL with file browser
 tunelo serve ./dist             # Specific directory
-tunelo serve ~/Documents        # Any path
+tunelo serve README.md          # Single file
+tunelo serve index.html         # HTML file (rendered in browser)
 tunelo serve . --local          # Local-only preview (no tunnel, no public URL)
 tunelo serve . -l -p 8000       # Local preview on port 8000
 ```
@@ -50,10 +62,10 @@ The file explorer runs in the browser — directory browsing, code syntax highli
 ### Options
 
 ```bash
-tunelo http <PORT> --relay my.server:4433   # Use a custom relay server
-tunelo http <PORT> -H 192.168.1.100         # Forward to non-localhost
-tunelo http <PORT> --private                # Auto-generate access code
-tunelo http <PORT> --code mysecret          # Set specific access code
+tunelo port <PORT> --relay my.server:4433   # Use a custom relay server
+tunelo port <PORT> -H 192.168.1.100         # Forward to non-localhost
+tunelo port <PORT> --password               # Auto-generate a password
+tunelo port <PORT> --password mysecret      # Set a specific password
 ```
 
 Default relay is `tunelo.net:4433` (free public relay). Use `--relay` for self-hosted.
@@ -71,7 +83,7 @@ tunelo serve /path/to/files
 
 ```bash
 # If there's a dev server running:
-tunelo http 3000
+tunelo port 3000
 
 # If it's just files:
 tunelo serve .
@@ -80,8 +92,15 @@ tunelo serve .
 ### User says "let my colleague test the API"
 
 ```bash
-tunelo http 8080 --private
-# Give them the Share URL (includes access code)
+tunelo port 8080 --password
+# Give them the Share URL (includes password in the URL)
+```
+
+### User says "start the dev server and share it"
+
+```bash
+tunelo port 3000 -- pnpm dev
+# Starts the dev server, waits for port, creates tunnel
 ```
 
 ### User says "preview this locally first"
@@ -97,7 +116,7 @@ tunelo serve ./dist --local
 Browser → HTTPS → Relay → QUIC tunnel → Client → localhost / file server
 ```
 
-- Public HTTPS URL assigned automatically (random subdomain like `abc123.tunelo.net`)
+- Public HTTPS URL assigned automatically (random subdomain like `swift-fox-3847.tunelo.net`)
 - QUIC transport — encrypted, multiplexed, low latency
 - Auto-reconnects if connection drops
 - Session limit: tunnels expire after ~2 hours on the public relay

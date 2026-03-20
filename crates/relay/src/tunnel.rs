@@ -64,8 +64,8 @@ async fn handle_connection(
 
     // ── Handshake ──────────────────────────────────────────────────────
     let register: ClientControl = read_message(&mut rx).await.context("read Register")?;
-    let (version, access_code) = match register {
-        ClientControl::Register { version, access_code } => (version, access_code),
+    let (version, password) = match register {
+        ClientControl::Register { version, password } => (version, password),
         _ => {
             send_error(&mut tx, 1000, "expected Register").await;
             bail!("unexpected first message");
@@ -86,14 +86,14 @@ async fn handle_connection(
     let subdomain = router.generate_subdomain();
     let hostname = format!("{subdomain}.{domain}");
     let tunnel_id = uuid::Uuid::new_v4().to_string();
-    let is_private = access_code.is_some();
+    let is_private = password.is_some();
 
     router.register(TunnelSession {
         subdomain: subdomain.clone(),
         hostname: hostname.clone(),
         tunnel_id: tunnel_id.clone(),
         connection: conn.clone(),
-        access_code,
+        password,
     });
 
     let _guard = scopeguard::guard((), |_| {

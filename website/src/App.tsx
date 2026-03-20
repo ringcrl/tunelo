@@ -30,18 +30,18 @@ export default function App() {
         Expose anything to the internet — local ports, files, directories. One command, instant HTTPS tunnel. Built in <strong>Rust</strong> — single binary, 8 MB memory, zero-copy data plane. <A href="https://github.com/jiweiyuan/tunelo">Star on GitHub</A>.
       </P>
 
-      <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunelo http 3000
-  ✔ Tunnel is ready!
+      <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunelo port 3000
+  Tunnel is ready.
 
-  Public URL:  https://abc123.tunelo.net
-  Forwarding:  → http://localhost:3000`}</CodeBlock>
+  Public URL:  https://swift-fox-3847.tunelo.net
+  Forwarding:  http://localhost:3000`}</CodeBlock>
 
       <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunelo serve .
-  ▸ Serving /Users/you/project on :51234
-  ✔ Tunnel is ready!
+  Serving /Users/you/project on :51234
+  Tunnel is ready.
 
-  Public URL:  https://xyz789.tunelo.net
-  Forwarding:  → file server (web explorer)`}</CodeBlock>
+  Public URL:  https://calm-river-9012.tunelo.net
+  Forwarding:  http://127.0.0.1:51234`}</CodeBlock>
 
       <P>
         Other tunnel tools need config files, accounts, or dashboards. Tunelo is a <strong>single binary</strong> that does two things: expose a local port, or serve files with a built-in web explorer. QUIC transport gives you multiplexed, encrypted, low-latency tunneling. By default, the client connects to the public relay at <Code>tunelo.net</Code> — or point it at your own with <Code>--relay</Code>.
@@ -56,10 +56,17 @@ export default function App() {
         <CodeBlock lang="bash">{`python3 -m http.server 3000`}</CodeBlock>
 
         <P>2. Expose it:</P>
-        <CodeBlock lang="bash">{`tunelo http 3000`}</CodeBlock>
+        <CodeBlock lang="bash">{`tunelo port 3000`}</CodeBlock>
 
         <P>
-          That's it — no flags needed. The client connects to the public relay at <Code>tunelo.net</Code> by default, assigns you a public URL like <Code>https://abc123.tunelo.net</Code>, and starts relaying traffic to your localhost through an encrypted QUIC tunnel.
+          That's it — no flags needed. The client connects to the public relay at <Code>tunelo.net</Code> by default, assigns you a public URL like <Code>https://swift-fox-3847.tunelo.net</Code>, and starts relaying traffic to your localhost through an encrypted QUIC tunnel.
+        </P>
+
+        <P>Or run a command and tunnel it in one step:</P>
+        <CodeBlock lang="bash">{`tunelo port 3000 -- pnpm dev`}</CodeBlock>
+
+        <P>
+          Tunelo spawns <Code>pnpm dev</Code>, waits for port 3000 to be ready, then creates the tunnel. When either stops, the other is cleaned up.
         </P>
 
         <P>Install the <strong>skill</strong> to teach your AI coding agent how to use tunelo:</P>
@@ -79,13 +86,15 @@ tunelo serve .
 # Serve a specific directory
 tunelo serve ./dist
 
+# Serve a single file
+tunelo serve README.md
+tunelo serve index.html
+
 # Local-only preview (no tunnel)
 tunelo serve . --local
 
 # Local preview on a specific port
-tunelo serve . -l -p 8000
-
-`}</CodeBlock>
+tunelo serve . -l -p 8000`}</CodeBlock>
 
         <P>The web explorer supports:</P>
         <List>
@@ -133,16 +142,22 @@ tunelo serve . -l -p 8000
           The client and relay are <strong>fully decoupled</strong>. The client defaults to the public relay at <Code>tunelo.net:4433</Code> — or use <Code>--relay</Code> to point at your own. No account, no signup.
         </P>
 
-        <CodeBlock lang="bash">{`# Port mode — expose a local HTTP service
-tunelo http 3000
-tunelo http 3000 --relay my.server:4433
-tunelo http 3000 -H 192.168.1.100
-tunelo http 3000 --private
-tunelo http 3000 --code mysecret
+        <CodeBlock lang="bash">{`# Port mode — expose a local port
+tunelo port 3000
+tunelo port 3000 --relay my.server:4433
+tunelo port 3000 -H 192.168.1.100
+tunelo port 3000 --password
+tunelo port 3000 --password mysecret
 
-# File mode — serve files with web explorer
+# Run a command and tunnel it
+tunelo port 3000 -- pnpm dev
+tunelo port 3000 -- next start
+tunelo port 5173 -- vite
+
+# File mode — serve files or directories
 tunelo serve .
 tunelo serve ./dist
+tunelo serve README.md
 tunelo serve . --local
 tunelo serve . -l -p 8000`}</CodeBlock>
 
@@ -162,7 +177,7 @@ tunelo relay --tunnel-addr 0.0.0.0:4433 --http-addr 0.0.0.0:80`}</CodeBlock>
 
       <Section id="self-hosting" title="Self-hosting">
         <P>
-          Don't want to use the public relay? Run your own on any VPS. The client and relay are separate binaries — just point <Code>--relay</Code> at your server. The <A href="https://github.com/jiweiyuan/tunelo/tree/main/deploy">deploy/</A> directory has everything: systemd service, nginx config, Let's Encrypt with Cloudflare DNS.
+          Don't want to use the public relay? Run your own on any VPS. The client and relay are the same binary — just point <Code>--relay</Code> at your server. The <A href="https://github.com/jiweiyuan/tunelo/tree/main/deploy">deploy/</A> directory has everything: systemd service, nginx config, Let's Encrypt with Cloudflare DNS.
         </P>
 
         <CodeBlock lang="bash">{`# Build the relay
@@ -172,7 +187,7 @@ cargo build --release --bin tunelo
 ./target/release/tunelo relay --domain yourdomain.com
 
 # Point your clients to it
-tunelo http 3000 --relay yourdomain.com:4433`}</CodeBlock>
+tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
 
         <P>You need:</P>
         <List>
@@ -193,15 +208,12 @@ tunelo http 3000 --relay yourdomain.com:4433`}</CodeBlock>
           rows={[
             ['Relay memory', '8 MB RSS'],
             ['Client memory', '8 MB RSS'],
-            ['Binary size (relay)', '3.5 MB (stripped, LTO)'],
-            ['Binary size (client)', '3.3 MB (stripped, LTO)'],
+            ['Binary size', '~4 MB (stripped, LTO)'],
             ['Tunnel overhead vs direct', '~14% (0.56s vs 0.49s / 100 req)'],
             ['Sequential latency', '~6ms/req (localhost)'],
             ['Throughput (20 concurrent)', '670 req/s'],
             ['Throughput (200 concurrent)', '672 req/s'],
             ['Errors under stress (5000 req)', '0'],
-            ['Source files', '9'],
-            ['Lines of Rust', '1,165'],
           ]}
         />
 
@@ -216,15 +228,15 @@ tunelo http 3000 --relay yourdomain.com:4433`}</CodeBlock>
         <CodeBlock lang="bash" showLineNumbers={false}>{`npx -y skills add tunelo/tunelo`}</CodeBlock>
 
         <P>
-          The skill tells your agent what tunelo does, when to use it, and all the CLI flags. After installing, your agent can run <Code>tunelo http 3000</Code> when you ask it to "share this locally" or "expose my dev server."
+          The skill tells your agent what tunelo does, when to use it, and all the CLI flags. After installing, your agent can run <Code>tunelo port 3000</Code> when you ask it to "share this locally" or "expose my dev server."
         </P>
 
         <P>What the skill teaches:</P>
         <List>
-          <Li>Expose HTTP services with <Code>tunelo http &lt;port&gt;</Code></Li>
-          <Li>Random subdomain assigned automatically</Li>
-          <Li>Forward to non-localhost hosts with <Code>-H</Code></Li>
-          <Li>How the QUIC tunnel works</Li>
+          <Li>Expose ports with <Code>tunelo port &lt;port&gt;</Code></Li>
+          <Li>Run commands and tunnel them with <Code>tunelo port 3000 -- pnpm dev</Code></Li>
+          <Li>Password protection with <Code>--password</Code></Li>
+          <Li>Serve files with <Code>tunelo serve .</Code></Li>
         </List>
 
         <Caption>Follows the same skill format as <A href="https://github.com/runbrowser/runbrowser">RunBrowser</A>.</Caption>
@@ -243,7 +255,7 @@ tunelo http 3000 --relay yourdomain.com:4433`}</CodeBlock>
             ['Account required', 'Yes', 'No'],
             ['Self-hostable', 'No', 'Yes'],
             ['Transport', 'HTTP/2', 'QUIC'],
-            ['Binary size', '~25 MB', '3.5 MB'],
+            ['Binary size', '~25 MB', '~4 MB'],
             ['Memory', '~50 MB', '8 MB'],
           ]}
         />
@@ -282,7 +294,7 @@ tunelo http 3000 --relay yourdomain.com:4433`}</CodeBlock>
           <Li><strong>QUIC encryption</strong> — tunnel traffic is encrypted with TLS 1.3 (rustls)</Li>
           <Li><strong>TLS termination</strong> — public HTTPS at the relay with Let's Encrypt certificates</Li>
           <Li><strong>No data storage</strong> — the relay copies bytes, doesn't inspect or store them</Li>
-          <Li><strong>Private tunnels</strong> — optional access code protection with cookie-based auth</Li>
+          <Li><strong>Password protection</strong> — optional <Code>--password</Code> with cookie-based auth</Li>
           <Li><strong>Self-hostable</strong> — run your own relay, control your own data</Li>
         </List>
       </Section>

@@ -50,6 +50,7 @@ pub async fn start_background(root: PathBuf) -> Result<u16> {
 }
 
 fn spawn_server(listener: TcpListener, root: PathBuf) {
+    let is_single_file = root.is_file();
     let root = Arc::new(root);
     tokio::spawn(async move {
         loop {
@@ -63,7 +64,13 @@ fn spawn_server(listener: TcpListener, root: PathBuf) {
                     let io = TokioIo::new(stream);
                     let service = hyper::service::service_fn(move |req| {
                         let root = root.clone();
-                        async move { handle(req, &root).await }
+                        async move {
+                            if is_single_file {
+                                handle_single_file(req, &root).await
+                            } else {
+                                handle(req, &root).await
+                            }
+                        }
                     });
                     // HTTP/1.1 with keep-alive
                     if let Err(e) = hyper_util::server::conn::auto::Builder::new(
@@ -81,6 +88,82 @@ fn spawn_server(listener: TcpListener, root: PathBuf) {
             );
         }
     });
+}
+
+// ─── Single file mode ────────────────────────────────────────────────────────
+
+/// Serve a single file for all requests. Supports Range requests.
+async fn handle_single_file(req: Request<hyper::body::Incoming>, file_path: &Path) -> Result<Response<BoxBody>, std::io::Error> {
+    debug!(method = %req.method(), path = %req.uri().path(), "single file request");
+
+    let mime = guess_mime(file_path);
+    let file_size = match tokio::fs::metadata(file_path).await {
+        Ok(m) => m.len(),
+        Err(_) => return Ok(text_response(StatusCode::INTERNAL_SERVER_ERROR, "Read error")),
+    };
+
+    let range = req
+        .headers()
+        .get(RANGE)
+        .and_then(|v| v.to_str().ok())
+        .and_then(parse_range);
+
+    match range {
+        Some((start, end_opt)) => {
+            let end = end_opt.unwrap_or(file_size - 1).min(file_size - 1);
+            if start >= file_size || start > end {
+                return Ok(Response::builder()
+                    .status(StatusCode::RANGE_NOT_SATISFIABLE)
+                    .header(CONTENT_RANGE, format!("bytes */{file_size}"))
+                    .body(empty_body())
+                    .unwrap());
+            }
+
+            let length = end - start + 1;
+            let file = match tokio::fs::File::open(file_path).await {
+                Ok(f) => f,
+                Err(_) => return Ok(text_response(StatusCode::INTERNAL_SERVER_ERROR, "Read error")),
+            };
+
+            use tokio::io::AsyncSeekExt;
+            let mut file = file;
+            if file.seek(std::io::SeekFrom::Start(start)).await.is_err() {
+                return Ok(text_response(StatusCode::INTERNAL_SERVER_ERROR, "Seek error"));
+            }
+
+            let limited = file.take(length);
+            let stream = ReaderStream::new(limited);
+            let body = StreamBody::new(stream.map(|r| r.map(Frame::data)));
+
+            Ok(Response::builder()
+                .status(StatusCode::PARTIAL_CONTENT)
+                .header(CONTENT_TYPE, mime)
+                .header(CONTENT_RANGE, format!("bytes {start}-{end}/{file_size}"))
+                .header(CONTENT_LENGTH, length)
+                .header(ACCEPT_RANGES, "bytes")
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(BoxBody::new(body))
+                .unwrap())
+        }
+        None => {
+            let file = match tokio::fs::File::open(file_path).await {
+                Ok(f) => f,
+                Err(_) => return Ok(text_response(StatusCode::INTERNAL_SERVER_ERROR, "Read error")),
+            };
+
+            let stream = ReaderStream::new(file);
+            let body = StreamBody::new(stream.map(|r| r.map(Frame::data)));
+
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .header(CONTENT_TYPE, mime)
+                .header(CONTENT_LENGTH, file_size)
+                .header(ACCEPT_RANGES, "bytes")
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(BoxBody::new(body))
+                .unwrap())
+        }
+    }
 }
 
 // ─── Request routing ─────────────────────────────────────────────────────────

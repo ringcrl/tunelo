@@ -6,9 +6,9 @@
 //! 3. Use copy_bidirectional for zero-copy relay
 //!
 //! Private tunnel auth flow:
-//!   1. URL with `?pwd=<code>` → validate → Set-Cookie → redirect to clean URL
-//!   2. Cookie `__tunelo_auth` → validate → relay
-//!   3. No auth → serve a minimal access code input page
+//!   1. URL with `?pwd=<password>` → validate → Set-Cookie → redirect to clean URL
+//!   2. Cookie `__tunelo_password` → validate → relay
+//!   3. No auth → serve a password input page
 //!   4. POST /__tunelo_verify → validate form body → Set-Cookie → redirect
 
 use std::sync::Arc;
@@ -77,8 +77,8 @@ async fn handle_connection(mut stream: TcpStream, router: &Router) -> Result<()>
     };
 
     // ── Public tunnel: relay directly ──────────────────────────────────
-    let expected = match &session.access_code {
-        Some(code) => code,
+    let expected = match &session.password {
+        Some(pw) => pw,
         None => {
             debug!(subdomain = %subdomain, "routing (public)");
             if let Err(e) = proxy::relay_connection(&session, stream).await {
@@ -91,7 +91,7 @@ async fn handle_connection(mut stream: TcpStream, router: &Router) -> Result<()>
     // ── Private tunnel: check auth ────────────────────────────────────
 
     // 1. Cookie — subsequent visits (most common, check first)
-    if let Some(ref c) = extract_cookie(raw, "__tunelo_auth") {
+    if let Some(ref c) = extract_cookie(raw, "__tunelo_password") {
         if constant_time_eq(c.as_bytes(), expected.as_bytes()) {
             debug!(subdomain = %subdomain, "routing (cookie auth)");
             if let Err(e) = proxy::relay_connection(&session, stream).await {
@@ -112,25 +112,25 @@ async fn handle_connection(mut stream: TcpStream, router: &Router) -> Result<()>
         }
     }
 
-    // 3. POST /__tunelo_verify — form submission from auth page
+    // 3. POST /__tunelo_verify — form submission from password page
     let method = extract_method(raw);
     let path = extract_path(raw);
     if method == Some("POST") && path == Some("/__tunelo_verify") {
         let body = consume_and_read_body(&mut stream).await;
-        if let Some(code) = extract_form_field(&body, "code") {
-            if constant_time_eq(code.as_bytes(), expected.as_bytes()) {
+        if let Some(pw) = extract_form_field(&body, "password") {
+            if constant_time_eq(pw.as_bytes(), expected.as_bytes()) {
                 send_auth_redirect(&mut stream, expected).await;
                 debug!(subdomain = %subdomain, "form auth accepted");
                 return Ok(());
             }
         }
-        // Wrong code — show auth page again with error
+        // Wrong password — show auth page again with error
         consume_request(&mut stream).await;
         send_auth_page(&mut stream, true).await;
         return Ok(());
     }
 
-    // 4. No valid auth — serve the access code input page
+    // 4. No valid auth — serve the password input page
     consume_request(&mut stream).await;
     send_auth_page(&mut stream, false).await;
     Ok(())
@@ -140,7 +140,7 @@ async fn handle_connection(mut stream: TcpStream, router: &Router) -> Result<()>
 
 async fn send_auth_page(stream: &mut TcpStream, show_error: bool) {
     let error_html = if show_error {
-        r#"<p style="color:#e53e3e;margin:0 0 16px;font-size:14px">Incorrect code. Try again.</p>"#
+        r#"<p style="color:#e53e3e;margin:0 0 16px;font-size:14px">Incorrect password. Try again.</p>"#
     } else {
         ""
     };
@@ -182,11 +182,11 @@ async fn send_auth_page(stream: &mut TcpStream, show_error: bool) {
       <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
     </svg>
   </div>
-  <h1>This link is private</h1>
-  <p class="sub">Enter the access code to continue.</p>
+  <h1>Password Required</h1>
+  <p class="sub">This tunnel is protected. Enter the password to continue.</p>
   {error_html}
   <form method="POST" action="/__tunelo_verify">
-    <input type="text" name="code" placeholder="Access code" autofocus autocomplete="off" required>
+    <input type="password" name="password" placeholder="Password" autofocus autocomplete="off" required>
     <button type="submit">Continue</button>
   </form>
 </div>
@@ -206,11 +206,11 @@ async fn send_auth_page(stream: &mut TcpStream, show_error: bool) {
     let _ = stream.write_all(body.as_bytes()).await;
 }
 
-async fn send_auth_redirect(stream: &mut TcpStream, code: &str) {
+async fn send_auth_redirect(stream: &mut TcpStream, password: &str) {
     let resp = format!(
         "HTTP/1.1 302 Found\r\n\
          Location: /\r\n\
-         Set-Cookie: __tunelo_auth={code}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400\r\n\
+         Set-Cookie: __tunelo_password={password}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400\r\n\
          Content-Length: 0\r\n\
          Connection: close\r\n\r\n"
     );
@@ -404,23 +404,23 @@ mod tests {
 
     #[test]
     fn test_extract_cookie() {
-        let raw = b"GET / HTTP/1.1\r\nHost: x.y\r\nCookie: foo=bar; __tunelo_auth=secret123\r\n\r\n";
-        assert_eq!(extract_cookie(raw, "__tunelo_auth"), Some("secret123".into()));
+        let raw = b"GET / HTTP/1.1\r\nHost: x.y\r\nCookie: foo=bar; __tunelo_password=secret123\r\n\r\n";
+        assert_eq!(extract_cookie(raw, "__tunelo_password"), Some("secret123".into()));
         assert_eq!(extract_cookie(raw, "foo"), Some("bar".into()));
         assert_eq!(extract_cookie(raw, "nope"), None);
     }
 
     #[test]
     fn test_extract_form_field() {
-        assert_eq!(extract_form_field("code=hello&x=1", "code"), Some("hello".into()));
-        assert_eq!(extract_form_field("code=hello+world", "code"), Some("hello world".into()));
-        assert_eq!(extract_form_field("code=a%20b", "code"), Some("a b".into()));
-        assert_eq!(extract_form_field("x=1", "code"), None);
+        assert_eq!(extract_form_field("password=hello&x=1", "password"), Some("hello".into()));
+        assert_eq!(extract_form_field("password=hello+world", "password"), Some("hello world".into()));
+        assert_eq!(extract_form_field("password=a%20b", "password"), Some("a b".into()));
+        assert_eq!(extract_form_field("x=1", "password"), None);
     }
 
     #[test]
     fn test_extract_method_and_path() {
-        let raw = b"POST /__tunelo_verify HTTP/1.1\r\nHost: x.y\r\n\r\ncode=abc";
+        let raw = b"POST /__tunelo_verify HTTP/1.1\r\nHost: x.y\r\n\r\npassword=abc";
         assert_eq!(extract_method(raw), Some("POST"));
         assert_eq!(extract_path(raw), Some("/__tunelo_verify"));
 

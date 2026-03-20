@@ -23,22 +23,22 @@ pub async fn run_tunnel(
     port: u16,
     local_host: String,
     relay: String,
-    access_code: Option<String>,
+    password: Option<String>,
 ) -> Result<()> {
     let local_addr: Arc<str> = format!("{local_host}:{port}").into();
     let mut backoff = INITIAL_BACKOFF;
     let mut first = true;
 
     loop {
-        match run_once(&relay, &access_code, &local_addr, first).await {
+        match run_once(&relay, &password, &local_addr, first).await {
             Ok(SessionEnd::Shutdown(reason)) => {
                 // Server explicitly told us to stop (e.g. session expired)
-                println!("\n  \x1b[33m⏱\x1b[0m  {reason}");
+                println!("\n  {reason}");
                 println!("  Tunnel closed.");
                 return Ok(());
             }
             Ok(SessionEnd::Disconnected) => {
-                println!("\n  \x1b[33m⟳\x1b[0m  Disconnected. Reconnecting in {}s...", backoff.as_secs());
+                println!("\n  Disconnected. Reconnecting in {}s...", backoff.as_secs());
                 sleep(backoff).await;
                 backoff = (backoff * 2).min(MAX_BACKOFF);
                 first = false;
@@ -49,7 +49,7 @@ pub async fn run_tunnel(
                     return Err(e);
                 }
                 warn!(error = %e, "connection failed, retrying in {}s", backoff.as_secs());
-                println!("  \x1b[33m⟳\x1b[0m  Connection failed. Retrying in {}s...", backoff.as_secs());
+                println!("  Connection failed. Retrying in {}s...", backoff.as_secs());
                 sleep(backoff).await;
                 backoff = (backoff * 2).min(MAX_BACKOFF);
             }
@@ -65,7 +65,7 @@ enum SessionEnd {
 /// Run a single tunnel session. Returns when disconnected or shut down.
 async fn run_once(
     relay: &str,
-    access_code: &Option<String>,
+    password: &Option<String>,
     local_addr: &Arc<str>,
     first: bool,
 ) -> Result<SessionEnd> {
@@ -78,14 +78,14 @@ async fn run_once(
         &mut tx,
         &ClientControl::Register {
             version: PROTOCOL_VERSION,
-            access_code: access_code.clone(),
+            password: password.clone(),
         },
     )
     .await?;
 
     let resp: RelayControl = read_message(&mut rx).await?;
-    let (hostname, tunnel_id) = match resp {
-        RelayControl::Registered { hostname, tunnel_id } => (hostname, tunnel_id),
+    let hostname = match resp {
+        RelayControl::Registered { hostname, .. } => hostname,
         RelayControl::Error { code, message } => {
             bail!("relay error ({code}): {message}");
         }
@@ -95,19 +95,18 @@ async fn run_once(
     // ── Print the URL ──────────────────────────────────────────────────
     if first {
         println!();
-        println!("  \x1b[32m✔\x1b[0m Tunnel is ready!");
+        println!("  Tunnel is ready.");
     } else {
-        println!("  \x1b[32m✔\x1b[0m Reconnected!");
+        println!("  Reconnected.");
     }
     println!();
-    if let Some(ref code) = access_code {
-        println!("  Share URL:   \x1b[1;36mhttps://{hostname}?pwd={code}\x1b[0m");
-        println!("  \x1b[33m🔒 Private\x1b[0m — visitors without the link will be asked for the code");
+    if let Some(ref pw) = password {
+        println!("  Share URL:   https://{hostname}?pwd={pw}");
+        println!("  Private — visitors without the link will be asked for the password.");
     } else {
-        println!("  Public URL:  \x1b[1;36mhttps://{hostname}\x1b[0m");
+        println!("  Public URL:  https://{hostname}");
     }
-    println!("  Forwarding:  → http://{local_addr}");
-    println!("  Tunnel ID:   {tunnel_id}");
+    println!("  Forwarding:  http://{local_addr}");
     println!();
 
     // ── Data loop ──────────────────────────────────────────────────────

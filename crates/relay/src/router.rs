@@ -19,8 +19,8 @@ pub struct TunnelSession {
     pub hostname: String,
     pub tunnel_id: String,
     pub connection: Connection,
-    /// Optional access code for private tunnels.
-    pub access_code: Option<String>,
+    /// Optional password for private tunnels.
+    pub password: Option<String>,
 }
 
 /// Thread-safe hostname → tunnel router.

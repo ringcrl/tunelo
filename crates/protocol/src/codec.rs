@@ -63,8 +63,7 @@ mod tests {
     async fn test_roundtrip() {
         let msg = ClientControl::Register {
             version: 1,
-            requested_subdomain: Some("myapp".into()),
-            access_code: None,
+            password: None,
         };
         let mut buf = Vec::new();
         write_message(&mut buf, &msg).await.unwrap();
@@ -74,23 +73,20 @@ mod tests {
         match decoded {
             ClientControl::Register {
                 version,
-                requested_subdomain,
-                access_code,
+                password,
             } => {
                 assert_eq!(version, 1);
-                assert_eq!(requested_subdomain.as_deref(), Some("myapp"));
-                assert!(access_code.is_none());
+                assert!(password.is_none());
             }
             _ => panic!("unexpected message type"),
         }
     }
 
     #[tokio::test]
-    async fn test_roundtrip_with_access_code() {
+    async fn test_roundtrip_with_password() {
         let msg = ClientControl::Register {
             version: 1,
-            requested_subdomain: None,
-            access_code: Some("fox4217".into()),
+            password: Some("fox4217".into()),
         };
         let mut buf = Vec::new();
         write_message(&mut buf, &msg).await.unwrap();
@@ -98,8 +94,8 @@ mod tests {
         let mut cursor = Cursor::new(buf);
         let decoded: ClientControl = read_message(&mut cursor).await.unwrap();
         match decoded {
-            ClientControl::Register { access_code, .. } => {
-                assert_eq!(access_code.as_deref(), Some("fox4217"));
+            ClientControl::Register { password, .. } => {
+                assert_eq!(password.as_deref(), Some("fox4217"));
             }
             _ => panic!("unexpected message type"),
         }

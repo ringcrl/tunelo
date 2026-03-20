@@ -9,9 +9,9 @@ pub enum ClientControl {
     Register {
         /// Protocol version for compatibility checking.
         version: u8,
-        /// Optional access code for private tunnels.
-        #[serde(default)]
-        access_code: Option<String>,
+        /// Optional password for private tunnels.
+        #[serde(default, alias = "access_code")]
+        password: Option<String>,
     },
     /// Response to a heartbeat ping from the relay.
     HeartbeatAck,
