@@ -42,7 +42,11 @@ curl -fsSL https://tunelo.net/install.sh | sh
 
 ```bash
 # Expose a local service (defaults to public relay at tunelo.net)
-tunelo http 3000
+tunelo port 3000
+
+# Password-protected tunnel
+tunelo port 3000 --password
+tunelo port 3000 --password mysecret
 
 # Serve a directory with web explorer
 tunelo serve .
@@ -58,7 +62,7 @@ tunelo serve . --local
 tunelo relay --domain yourdomain.com
 
 # Point clients to your relay
-tunelo http 3000 --relay yourdomain.com:4433
+tunelo port 3000 --relay yourdomain.com:4433
 ```
 
 ## CLI
