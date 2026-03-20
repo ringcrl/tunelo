@@ -273,7 +273,7 @@ async fn handle_api_raw(root: &Path, req: &Request<hyper::body::Incoming>) -> Re
 
             use tokio::io::AsyncSeekExt;
             let mut file = file;
-            if let Err(_) = file.seek(std::io::SeekFrom::Start(start)).await {
+            if file.seek(std::io::SeekFrom::Start(start)).await.is_err() {
                 return text_response(StatusCode::INTERNAL_SERVER_ERROR, "Seek error");
             }
 
@@ -377,9 +377,7 @@ fn text_response(status: StatusCode, msg: &str) -> Response<BoxBody> {
 /// Parse `bytes=START-END` range value.
 fn parse_range(val: &str) -> Option<(u64, Option<u64>)> {
     let range = val.strip_prefix("bytes=")?;
-    let mut parts = range.splitn(2, '-');
-    let start_str = parts.next()?;
-    let end_str = parts.next()?;
+    let (start_str, end_str) = range.split_once('-')?;
 
     if start_str.is_empty() {
         // bytes=-500 → last 500 bytes (not supported yet, return None)
