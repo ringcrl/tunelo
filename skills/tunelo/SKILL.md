@@ -33,7 +33,6 @@ cargo install tunelo-client
 
 ```bash
 tunelo http <PORT>                          # Expose HTTP service
-tunelo http <PORT> --subdomain myapp        # Request specific subdomain
 tunelo http <PORT> --relay tunelo.net:4433  # Custom relay (default: tunelo.net)
 tunelo http <PORT> -H 0.0.0.0              # Forward to non-localhost host
 tunelo http <PORT> --private                # Private tunnel (auto access code)
@@ -45,7 +44,6 @@ tunelo http <PORT> --code mysecret          # Private tunnel (specific code)
 ```bash
 tunelo serve .                                    # Serve current directory
 tunelo serve ./dist                               # Serve a specific directory
-tunelo serve . --subdomain files                  # With custom subdomain
 tunelo serve . --local                            # Local-only preview (no tunnel)
 tunelo serve . -l -p 8000                         # Local preview on port 8000
 ```
@@ -59,7 +57,6 @@ File mode starts a built-in web explorer with directory browsing, code highlight
 tunelo http 5173
 
 # Share project files with a colleague
-tunelo serve . --subdomain demo
 
 # Preview a static site locally
 tunelo serve ./dist --local
@@ -84,7 +81,6 @@ Browser → HTTPS → Relay → QUIC stream → Client → localhost:PORT
 
 - The tunnel stays open as long as the `tunelo` process is running
 - Press `Ctrl+C` to close the tunnel
-- Subdomains are first-come-first-served; use `--subdomain` to request a specific one
 - The public URL is HTTPS — TLS is terminated at the relay
 - Use `--private` to generate an access code, or `--code` to set your own
 - File mode embeds the web explorer in the binary — no external dependencies

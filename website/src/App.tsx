@@ -85,8 +85,7 @@ tunelo serve . --local
 # Local preview on a specific port
 tunelo serve . -l -p 8000
 
-# With custom subdomain
-tunelo serve . --subdomain files`}</CodeBlock>
+`}</CodeBlock>
 
         <P>The web explorer supports:</P>
         <List>
@@ -108,7 +107,7 @@ tunelo serve . --subdomain files`}</CodeBlock>
 
       <Section id="how-it-works" title="How it works">
         <P>
-          The client opens a <strong>QUIC connection</strong> to the relay and registers a subdomain. When a browser hits that subdomain, the relay peeks at the Host header, finds the matching tunnel, opens a QUIC stream, and does <Code>copy_bidirectional</Code> between the TCP socket and the QUIC stream. <strong>Zero HTTP parsing</strong> on the data path.
+          The client opens a <strong>QUIC connection</strong> to the relay and gets a random subdomain. When a browser hits that URL, the relay peeks at the Host header, finds the matching tunnel, opens a QUIC stream, and does <Code>copy_bidirectional</Code> between the TCP socket and the QUIC stream. <strong>Zero HTTP parsing</strong> on the data path.
         </P>
 
         <CodeBlock lang="bash" showLineNumbers={false}>{`Browser → HTTPS → Relay → QUIC stream → Client → localhost:3000
@@ -136,7 +135,6 @@ tunelo serve . --subdomain files`}</CodeBlock>
 
         <CodeBlock lang="bash">{`# Port mode — expose a local HTTP service
 tunelo http 3000
-tunelo http 3000 --subdomain myapp
 tunelo http 3000 --relay my.server:4433
 tunelo http 3000 -H 192.168.1.100
 tunelo http 3000 --private
@@ -145,7 +143,6 @@ tunelo http 3000 --code mysecret
 # File mode — serve files with web explorer
 tunelo serve .
 tunelo serve ./dist
-tunelo serve . --subdomain files
 tunelo serve . --local
 tunelo serve . -l -p 8000`}</CodeBlock>
 
@@ -225,7 +222,7 @@ tunelo http 3000 --relay yourdomain.com:4433`}</CodeBlock>
         <P>What the skill teaches:</P>
         <List>
           <Li>Expose HTTP services with <Code>tunelo http &lt;port&gt;</Code></Li>
-          <Li>Request custom subdomains with <Code>--subdomain</Code></Li>
+          <Li>Random subdomain assigned automatically</Li>
           <Li>Forward to non-localhost hosts with <Code>-H</Code></Li>
           <Li>How the QUIC tunnel works</Li>
         </List>

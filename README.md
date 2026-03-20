@@ -55,7 +55,6 @@ cargo build --release
 
 ```
 tunelo http <PORT>                          # Expose local HTTP service
-tunelo http <PORT> --subdomain myapp        # Request specific subdomain
 tunelo http <PORT> --relay host:4433        # Custom relay server
 tunelo http <PORT> -H 0.0.0.0              # Forward to non-localhost
 tunelo http <PORT> --private                # Private tunnel (auto access code)
@@ -63,7 +62,6 @@ tunelo http <PORT> --code mysecret          # Private tunnel (specific code)
 
 tunelo serve .                              # Serve current directory
 tunelo serve ./dist                         # Serve a specific directory
-tunelo serve . --subdomain files            # With custom subdomain
 tunelo serve . --local                      # Local-only preview (no tunnel)
 tunelo serve . -l -p 8000                   # Local preview on port 8000
 
