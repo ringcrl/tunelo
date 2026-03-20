@@ -1,0 +1,31 @@
+[package]
+name = "tunelo-gateway"
+description = "Tunelo gateway server — routes public HTTP to tunnel clients"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "tunelo-gateway"
+path = "src/main.rs"
+
+[dependencies]
+tunelo-protocol = { path = "../protocol" }
+
+tokio = { workspace = true }
+quinn = { workspace = true }
+rustls = { workspace = true }
+rcgen = { workspace = true }
+
+clap = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+uuid = { workspace = true }
+rand = { workspace = true }
+dashmap = { workspace = true }
+base62 = { workspace = true }
+names = { workspace = true }
+httparse = { workspace = true }
+scopeguard = { workspace = true }

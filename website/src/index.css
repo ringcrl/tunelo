@@ -1,0 +1,140 @@
+@import "tailwindcss";
+@import "@fontsource-variable/geist";
+
+:root {
+  --tunelo-blue: #0061FE;
+  --tunelo-blue-hover: #0050D4;
+  --tunelo-dark: #0a0a0b;
+  --tunelo-gray-900: #18181b;
+  --tunelo-gray-800: #27272a;
+  --tunelo-gray-700: #3f3f46;
+  --tunelo-gray-500: #71717a;
+  --tunelo-gray-400: #a1a1aa;
+  --tunelo-gray-300: #d4d4d8;
+  --tunelo-green: #22c55e;
+  --tunelo-cyan: #06b6d4;
+  --tunelo-purple: #a855f7;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--tunelo-dark);
+  color: #fafafa;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Terminal styles */
+.terminal {
+  background: #0c0c0c;
+  border: 1px solid var(--tunelo-gray-800);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.terminal-header {
+  background: var(--tunelo-gray-900);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terminal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.terminal-body {
+  padding: 20px 24px;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #e4e4e7;
+}
+
+.terminal-body .prompt {
+  color: var(--tunelo-green);
+}
+
+.terminal-body .command {
+  color: #fafafa;
+}
+
+.terminal-body .output {
+  color: var(--tunelo-gray-400);
+}
+
+.terminal-body .success {
+  color: var(--tunelo-green);
+}
+
+.terminal-body .url {
+  color: var(--tunelo-cyan);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.terminal-body .dim {
+  color: var(--tunelo-gray-500);
+}
+
+/* Skill code block */
+.skill-block {
+  background: #0c0c0c;
+  border: 1px solid var(--tunelo-gray-800);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.skill-block pre {
+  padding: 24px;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #e4e4e7;
+  overflow-x: auto;
+}
+
+.skill-block code .comment {
+  color: var(--tunelo-gray-500);
+}
+
+.skill-block code .string {
+  color: var(--tunelo-green);
+}
+
+.skill-block code .keyword {
+  color: var(--tunelo-purple);
+}
+
+/* Glow effect */
+.glow {
+  position: relative;
+}
+
+.glow::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, var(--tunelo-blue), var(--tunelo-cyan), var(--tunelo-purple));
+  opacity: 0.3;
+  z-index: -1;
+  filter: blur(8px);
+}

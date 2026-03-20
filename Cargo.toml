@@ -1,0 +1,58 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/protocol",
+    "crates/client",
+    "crates/gateway",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/tunelo/tunelo"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["rt-multi-thread", "io-util", "macros", "net", "time", "sync", "signal", "fs"] }
+
+# QUIC
+quinn = "0.11"
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+rcgen = "0.13"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+rmp-serde = "1"
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+
+# Error handling
+anyhow = { version = "1", features = ["backtrace"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# HTTP parsing
+httparse = "1"
+
+# Misc
+uuid = { version = "1", features = ["v4", "serde"] }
+rand = "0.8"
+bytes = "1"
+dashmap = "6"
+base62 = "2"
+names = { version = "0.14", default-features = false }
+scopeguard = "1"
+include_dir = "0.7"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 1

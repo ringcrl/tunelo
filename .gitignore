@@ -1,0 +1,16 @@
+# Rust
+target/
+
+# Node
+node_modules/
+dist/
+
+# Environment
+.env
+*.pem
+
+# Cloudflare credentials
+cloudflare.ini
+
+# OS
+.DS_Store

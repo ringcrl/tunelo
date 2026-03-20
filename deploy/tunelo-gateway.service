@@ -1,0 +1,26 @@
+[Unit]
+Description=Tunelo Gateway Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tunelo
+Group=tunelo
+ExecStart=/opt/tunelo/bin/tunelo-gateway \
+    --domain tunelo.net \
+    --tunnel-addr 0.0.0.0:4433 \
+    --http-addr 127.0.0.1:8080
+Restart=always
+RestartSec=5
+Environment=RUST_LOG=tunelo_gateway=info
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/tunelo
+
+[Install]
+WantedBy=multi-user.target
