@@ -1,6 +1,6 @@
 # Tunelo Deployment Guide
 
-Deploy tunelo-gateway to UK VPS (`130.162.188.52`) with domain `tunelo.net`.
+Deploy tunelo-relay to UK VPS (`130.162.188.52`) with domain `tunelo.net`.
 
 ## Architecture
 
@@ -14,7 +14,7 @@ Deploy tunelo-gateway to UK VPS (`130.162.188.52`) with domain `tunelo.net`.
               ▼               ▼               ▼
          ┌─────────────────────────┐    ┌──────────┐
          │    nginx (port 80/443)  │    │  tunelo   │
-         │    TLS termination      │    │  gateway  │
+         │    TLS termination      │    │  relay  │
          │    Let's Encrypt cert   │    │  (QUIC)   │
          ├─────────┬───────────────┤    │  :4433    │
          │ tunelo  │  *.tunelo.net │    └──────────┘
@@ -24,7 +24,7 @@ Deploy tunelo-gateway to UK VPS (`130.162.188.52`) with domain `tunelo.net`.
          └─────────┴───────┬───────┘
                            ▼
                    ┌──────────────┐
-                   │tunelo-gateway│
+                   │tunelo-relay│
                    │  HTTP :8080  │
                    │  QUIC :4433  │
                    └──────────────┘
@@ -78,14 +78,14 @@ bash 03-letsencrypt.sh YOUR_CLOUDFLARE_API_TOKEN
 
 ```bash
 # Check services
-ssh ukvps "sudo systemctl status tunelo-gateway nginx"
+ssh ukvps "sudo systemctl status tunelo-relay nginx"
 
 # Test landing page
 curl https://tunelo.net
 
 # Test tunnel (from local machine)
 python3 -m http.server 3000 &
-./target/release/tunelo http 3000 --gateway tunelo.net:4433
+./target/release/tunelo http 3000 --relay tunelo.net:4433
 # Then visit the URL it gives you
 ```
 
@@ -93,10 +93,10 @@ python3 -m http.server 3000 &
 
 ```bash
 # View logs
-ssh ukvps "sudo journalctl -u tunelo-gateway -f"
+ssh ukvps "sudo journalctl -u tunelo-relay -f"
 
-# Restart gateway
-ssh ukvps "sudo systemctl restart tunelo-gateway"
+# Restart relay
+ssh ukvps "sudo systemctl restart tunelo-relay"
 
 # Renew certificate (auto via timer, but manual if needed)
 ssh ukvps "sudo certbot renew"
@@ -114,4 +114,4 @@ ssh ukvps "sudo certbot renew"
 | `03-letsencrypt.sh` | Get wildcard SSL cert via DNS-01 |
 | `04-deploy.sh` | Build, upload, and install everything |
 | `nginx-tunelo.conf` | Nginx config for TLS + proxy |
-| `tunelo-gateway.service` | Systemd unit file |
+| `tunelo-relay.service` | Systemd unit file |

@@ -1,7 +1,7 @@
-//! Tunnel connection management — QUIC connection to the gateway.
+//! Tunnel connection management — QUIC connection to the relay.
 //!
 //! Flow (bore's simplicity + reverst's QUIC dial):
-//! 1. Connect to gateway via QUIC
+//! 1. Connect to relay via QUIC
 //! 2. Open control stream, Register → Registered
 //! 3. Print public URL
 //! 4. Accept data streams, relay each to localhost
@@ -12,7 +12,7 @@ use anyhow::{bail, Context, Result};
 use tracing::{error, info, info_span, warn, Instrument};
 
 use tunelo_protocol::{
-    read_message, write_message, ClientControl, GatewayControl, PROTOCOL_VERSION,
+    read_message, write_message, ClientControl, RelayControl, PROTOCOL_VERSION,
 };
 
 use crate::proxy;
@@ -21,12 +21,12 @@ use crate::proxy;
 pub async fn run_tunnel(
     port: u16,
     local_host: String,
-    gateway: String,
+    relay: String,
     subdomain: Option<String>,
     access_code: Option<String>,
 ) -> Result<()> {
-    let conn = connect(&gateway).await?;
-    info!(gateway = %gateway, "connected");
+    let conn = connect(&relay).await?;
+    info!(relay = %relay, "connected");
 
     // ── Handshake ──────────────────────────────────────────────────────
     let (mut tx, mut rx) = conn.open_bi().await?;
@@ -40,14 +40,14 @@ pub async fn run_tunnel(
     )
     .await?;
 
-    let resp: GatewayControl = read_message(&mut rx).await?;
+    let resp: RelayControl = read_message(&mut rx).await?;
     let (hostname, tunnel_id) = match resp {
-        GatewayControl::Registered {
+        RelayControl::Registered {
             hostname,
             tunnel_id,
         } => (hostname, tunnel_id),
-        GatewayControl::Error { code, message } => {
-            bail!("gateway error ({code}): {message}");
+        RelayControl::Error { code, message } => {
+            bail!("relay error ({code}): {message}");
         }
         _ => bail!("unexpected response"),
     };
@@ -69,7 +69,7 @@ pub async fn run_tunnel(
     // ── Run ────────────────────────────────────────────────────────────
     let local_addr: Arc<str> = format!("{local_host}:{port}").into();
 
-    // Data loop: accept QUIC streams from gateway, relay to localhost
+    // Data loop: accept QUIC streams from relay, relay to localhost
     let conn2 = conn.clone();
     let addr2 = local_addr.clone();
     let data_handle = tokio::spawn(async move {
@@ -95,16 +95,16 @@ pub async fn run_tunnel(
 
     // Control loop: heartbeats
     loop {
-        match read_message::<GatewayControl, _>(&mut rx).await {
-            Ok(GatewayControl::Heartbeat) => {
+        match read_message::<RelayControl, _>(&mut rx).await {
+            Ok(RelayControl::Heartbeat) => {
                 let _ = write_message(&mut tx, &ClientControl::HeartbeatAck).await;
             }
-            Ok(GatewayControl::Shutdown { reason }) => {
+            Ok(RelayControl::Shutdown { reason }) => {
                 info!(%reason, "shutdown requested");
                 break;
             }
-            Ok(GatewayControl::Error { code, message }) => {
-                error!(code, %message, "gateway error");
+            Ok(RelayControl::Error { code, message }) => {
+                error!(code, %message, "relay error");
                 break;
             }
             Ok(_) => {}
@@ -120,8 +120,8 @@ pub async fn run_tunnel(
     Ok(())
 }
 
-/// Connect to the gateway via QUIC.
-async fn connect(gateway: &str) -> Result<quinn::Connection> {
+/// Connect to the relay via QUIC.
+async fn connect(relay: &str) -> Result<quinn::Connection> {
     let mut crypto = rustls::ClientConfig::builder()
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(InsecureVerifier))
@@ -143,16 +143,16 @@ async fn connect(gateway: &str) -> Result<quinn::Connection> {
     let mut endpoint = quinn::Endpoint::client("0.0.0.0:0".parse()?)?;
     endpoint.set_default_client_config(client_config);
 
-    let addr: std::net::SocketAddr = gateway
+    let addr: std::net::SocketAddr = relay
         .parse()
         .or_else(|_| {
             use std::net::ToSocketAddrs;
-            gateway
+            relay
                 .to_socket_addrs()?
                 .next()
                 .ok_or_else(|| std::io::Error::other("no addresses"))
         })
-        .context("resolve gateway")?;
+        .context("resolve relay")?;
 
     endpoint
         .connect(addr, "tunelo")?

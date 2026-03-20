@@ -1,4 +1,4 @@
-//! Tunelo Gateway — public-facing server.
+//! Tunelo Relay — public-facing server.
 //!
 //! 1. Accepts QUIC tunnel connections from clients
 //! 2. Accepts public HTTP connections from browsers
@@ -17,7 +17,7 @@ mod tls;
 mod tunnel;
 
 #[derive(Parser, Debug)]
-#[clap(name = "tunelo-gateway", about = "Tunelo tunnel gateway server")]
+#[clap(name = "tunelo-relay", about = "Tunelo tunnel relay server")]
 struct Args {
     /// Domain suffix for tunnel hostnames (e.g., "tunelo.net")
     #[clap(long, env = "TUNELO_DOMAIN", default_value = "localhost")]
@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "tunelo_gateway=info".into()),
+                .unwrap_or_else(|_| "tunelo_relay=info".into()),
         )
         .init();
 

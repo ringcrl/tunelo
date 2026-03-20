@@ -1452,7 +1452,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "tunelo-gateway"
+name = "tunelo-protocol"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "rmp-serde",
+ "serde",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "tunelo-relay"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1471,18 +1483,6 @@ dependencies = [
  "tracing-subscriber",
  "tunelo-protocol",
  "uuid",
-]
-
-[[package]]
-name = "tunelo-protocol"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "rmp-serde",
- "serde",
- "tokio",
- "tracing",
 ]
 
 [[package]]

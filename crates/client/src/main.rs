@@ -42,9 +42,9 @@ struct Args {
     #[clap(short, long, default_value = "3000")]
     port: u16,
 
-    /// Gateway address.
-    #[clap(short, long, env = "TUNELO_GATEWAY", default_value = "127.0.0.1:4433")]
-    gateway: String,
+    /// Relay server address.
+    #[clap(short, long, env = "TUNELO_RELAY", default_value = "tunelo.net:4433")]
+    relay: String,
 
     /// Request a specific subdomain.
     #[clap(short, long)]
@@ -86,7 +86,7 @@ async fn main() -> Result<()> {
         if args.local {
             bail!("--local only works with file/directory paths, not ports");
         }
-        return tunnel::run_tunnel(port, args.local_host, args.gateway, args.subdomain, access_code).await;
+        return tunnel::run_tunnel(port, args.local_host, args.relay, args.subdomain, access_code).await;
     }
 
     // ── Path mode: serve files ─────────────────────────────────
@@ -122,7 +122,7 @@ async fn main() -> Result<()> {
         let display = path.canonicalize().unwrap_or(path.clone());
         let port = fileserver::start_background(path).await?;
         println!("  \x1b[90m▸ Serving {} on :{port}\x1b[0m", display.display());
-        tunnel::run_tunnel(port, "127.0.0.1".into(), args.gateway, args.subdomain, access_code).await
+        tunnel::run_tunnel(port, "127.0.0.1".into(), args.relay, args.subdomain, access_code).await
     }
 }
 

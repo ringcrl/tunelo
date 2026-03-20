@@ -1,6 +1,6 @@
 //! Data-plane relay — streams raw HTTP bytes through the QUIC tunnel.
 //!
-//! ZERO parsing on the data path. The gateway already extracted the Host
+//! ZERO parsing on the data path. The relay already extracted the Host
 //! header before calling into this module. Everything here is a raw byte
 //! pipe: public TCP socket ↔ QUIC stream ↔ client ↔ localhost.
 //!

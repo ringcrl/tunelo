@@ -22,8 +22,8 @@ $ tunelo .
 ## Architecture
 
 ```
-Browser → HTTPS → Gateway → QUIC stream → Client → localhost:3000
-                  (8 MB)                   (8 MB)
+Browser → HTTPS → Relay → QUIC stream → Client → localhost:3000
+                  (8 MB)                 (8 MB)
 ```
 
 - **QUIC tunnel** (quinn + rustls) — multiplexed, encrypted, low-latency
@@ -36,14 +36,14 @@ Browser → HTTPS → Gateway → QUIC stream → Client → localhost:3000
 # Build
 cargo build --release
 
-# Terminal 1: Start the gateway
-./target/release/tunelo-gateway --domain localhost
+# Terminal 1: Start the relay
+./target/release/tunelo-relay --domain localhost
 
 # Terminal 2: Expose a local service
-./target/release/tunelo http 3000 --gateway 127.0.0.1:4433
+./target/release/tunelo http 3000 --relay 127.0.0.1:4433
 
 # Or serve a directory
-./target/release/tunelo . --gateway 127.0.0.1:4433
+./target/release/tunelo . --relay 127.0.0.1:4433
 
 # Or just preview locally (no tunnel)
 ./target/release/tunelo . --local
@@ -57,7 +57,7 @@ cargo build --release
 # Port mode — expose a local HTTP service
 tunelo http <PORT>                          # Expose HTTP service
 tunelo http <PORT> --subdomain myapp        # Request specific subdomain
-tunelo http <PORT> --gateway host:4433      # Custom gateway
+tunelo http <PORT> --relay host:4433        # Custom relay
 tunelo http <PORT> -H 0.0.0.0              # Forward to non-localhost
 tunelo http <PORT> --private                # Private tunnel (auto access code)
 tunelo http <PORT> --code mysecret          # Private tunnel (specific code)
@@ -70,13 +70,13 @@ tunelo . --local                            # Local-only preview (no tunnel)
 tunelo . -l -p 8000                         # Local preview on port 8000
 ```
 
-### Gateway
+### Relay
 
 ```
-tunelo-gateway                              # Start with defaults
-tunelo-gateway --domain tunelo.net          # Production domain
-tunelo-gateway --tunnel-addr 0.0.0.0:4433   # QUIC listener
-tunelo-gateway --http-addr 0.0.0.0:80       # HTTP listener
+tunelo-relay                              # Start with defaults
+tunelo-relay --domain tunelo.net          # Production domain
+tunelo-relay --tunnel-addr 0.0.0.0:4433   # QUIC listener
+tunelo-relay --http-addr 0.0.0.0:80       # HTTP listener
 ```
 
 ## File Server Features
@@ -101,7 +101,7 @@ Everything else serves the embedded SPA frontend.
 crates/
   protocol/     Shared protocol types + codec
   client/       CLI + tunnel client + built-in file server
-  gateway/      Gateway server
+  relay/        Relay server
 web/            File explorer frontend (embedded into client binary)
 website/        Landing page (tunelo.net)
 deploy/         VPS deployment scripts + configs
@@ -112,7 +112,7 @@ skills/         AI agent skill (SKILL.md)
 
 | Metric | Value |
 |--------|-------|
-| Gateway memory | 8 MB RSS |
+| Relay memory | 8 MB RSS |
 | Tunnel overhead | ~14% vs direct |
 | Throughput | ~670 req/s (localhost) |
 | Binary size | 3.3–3.5 MB |

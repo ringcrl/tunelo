@@ -1,8 +1,8 @@
-//! TLS configuration helpers for the gateway.
+//! TLS configuration helpers for the relay.
 //!
 //! For the MVP, we generate a self-signed certificate for the QUIC tunnel listener.
 //! The client will skip server cert verification in dev mode.
-//! In production, the gateway should use proper certificates.
+//! In production, the relay should use proper certificates.
 
 use anyhow::Result;
 use std::sync::Arc;

@@ -13,7 +13,7 @@ use tokio::time::{interval, Duration};
 use tracing::{info, info_span, warn, Instrument};
 
 use tunelo_protocol::{
-    read_message, write_message, ClientControl, GatewayControl, PROTOCOL_VERSION,
+    read_message, write_message, ClientControl, RelayControl, PROTOCOL_VERSION,
 };
 
 use crate::router::{Router, TunnelSession};
@@ -118,7 +118,7 @@ async fn handle_connection(
 
     write_message(
         &mut tx,
-        &GatewayControl::Registered {
+        &RelayControl::Registered {
             hostname: hostname.clone(),
             tunnel_id,
         },
@@ -131,7 +131,7 @@ async fn handle_connection(
     loop {
         tokio::select! {
             _ = tick.tick() => {
-                if write_message(&mut tx, &GatewayControl::Heartbeat).await.is_err() {
+                if write_message(&mut tx, &RelayControl::Heartbeat).await.is_err() {
                     break;
                 }
             }
@@ -154,7 +154,7 @@ async fn handle_connection(
 async fn send_error(tx: &mut quinn::SendStream, code: u16, msg: &str) {
     let _ = write_message(
         tx,
-        &GatewayControl::Error {
+        &RelayControl::Error {
             code,
             message: msg.into(),
         },

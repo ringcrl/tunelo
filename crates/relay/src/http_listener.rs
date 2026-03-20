@@ -355,7 +355,7 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 async fn send_error(stream: &mut TcpStream, status: u16, msg: &str) {
     let reason = match status {
         400 => "Bad Request",
-        502 => "Bad Gateway",
+        502 => "Bad Relay",
         _ => "Error",
     };
     let body = format!("{status} {reason}: {msg}\n");

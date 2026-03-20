@@ -108,17 +108,17 @@ tunelo . --subdomain files`}</CodeBlock>
 
       <Section id="how-it-works" title="How it works">
         <P>
-          The client opens a <strong>QUIC connection</strong> to the gateway and registers a subdomain. When a browser hits that subdomain, the gateway peeks at the Host header, finds the matching tunnel, opens a QUIC stream, and does <Code>copy_bidirectional</Code> between the TCP socket and the QUIC stream. <strong>Zero HTTP parsing</strong> on the data path.
+          The client opens a <strong>QUIC connection</strong> to the relay and registers a subdomain. When a browser hits that subdomain, the relay peeks at the Host header, finds the matching tunnel, opens a QUIC stream, and does <Code>copy_bidirectional</Code> between the TCP socket and the QUIC stream. <strong>Zero HTTP parsing</strong> on the data path.
         </P>
 
-        <CodeBlock lang="bash" showLineNumbers={false}>{`Browser → HTTPS → Gateway → QUIC stream → Client → localhost:3000
-                  (8 MB)                   (8 MB)
+        <CodeBlock lang="bash" showLineNumbers={false}>{`Browser → HTTPS → Relay → QUIC stream → Client → localhost:3000
+                 (8 MB)                  (8 MB)
 
-┌─────────┐    ┌─────────────────┐    ┌──────────────┐    ┌───────────┐
-│ Browser  │───▶│  tunelo gateway │◀───│ tunelo client │───▶│ localhost │
-│          │    │  TLS + routing  │    │  QUIC tunnel  │    │   :3000   │
-└─────────┘    └─────────────────┘    └──────────────┘    └───────────┘
-  Internet          Your VPS            Your machine        Your app`}</CodeBlock>
+┌──────────┐   ┌────────────────┐   ┌───────────────┐   ┌───────────┐
+│  Browser  │──▶│  tunelo relay  │◀──│ tunelo client  │──▶│ localhost │
+│           │   │  TLS + routing │   │  QUIC tunnel   │   │   :3000   │
+└──────────┘   └────────────────┘   └───────────────┘   └───────────┘
+  Internet         Your VPS           Your machine         Your app`}</CodeBlock>
 
         <List>
           <Li><strong>Control stream</strong> — one persistent QUIC stream for registration + heartbeats (msgpack framing)</Li>
@@ -131,13 +131,13 @@ tunelo . --subdomain files`}</CodeBlock>
 
       <Section id="cli-reference" title="CLI reference">
         <P>
-          The client has <strong>one command</strong>. The gateway has sensible defaults. Everything you need, nothing you don't.
+          The client has <strong>one command</strong>. The relay has sensible defaults. Everything you need, nothing you don't.
         </P>
 
         <CodeBlock lang="bash">{`# Port mode — expose a local HTTP service
 tunelo http 3000
 tunelo http 3000 --subdomain myapp
-tunelo http 3000 --gateway tunelo.net:4433
+tunelo http 3000 --relay tunelo.net:4433
 tunelo http 3000 -H 192.168.1.100
 tunelo http 3000 --private
 tunelo http 3000 --code mysecret
@@ -149,54 +149,54 @@ tunelo . --subdomain files
 tunelo . --local
 tunelo . -l -p 8000`}</CodeBlock>
 
-        <P>Gateway configuration:</P>
+        <P>Relay configuration:</P>
 
         <CodeBlock lang="bash">{`# Start with defaults
-tunelo-gateway
+tunelo-relay
 
 # Production deployment
-tunelo-gateway --domain tunelo.net
+tunelo-relay --domain tunelo.net
 
 # Custom addresses
-tunelo-gateway --tunnel-addr 0.0.0.0:4433 --http-addr 0.0.0.0:80`}</CodeBlock>
+tunelo-relay --tunnel-addr 0.0.0.0:4433 --http-addr 0.0.0.0:80`}</CodeBlock>
 
-        <Caption>Client: one binary, one command. Gateway: three flags.</Caption>
+        <Caption>Client: one binary, one command. Relay: three flags.</Caption>
       </Section>
 
       <Section id="self-hosting" title="Self-hosting">
         <P>
-          Tunelo is fully self-hostable. Run your own gateway on any VPS. The <A href="https://github.com/jiweiyuan/tunelo/tree/main/deploy">deploy/</A> directory has everything: systemd service, nginx config, Let's Encrypt with Cloudflare DNS.
+          Tunelo is fully self-hostable. Run your own relay on any VPS. The <A href="https://github.com/jiweiyuan/tunelo/tree/main/deploy">deploy/</A> directory has everything: systemd service, nginx config, Let's Encrypt with Cloudflare DNS.
         </P>
 
-        <CodeBlock lang="bash">{`# Build the gateway
-cargo build --release --bin tunelo-gateway
+        <CodeBlock lang="bash">{`# Build the relay
+cargo build --release --bin tunelo-relay
 
 # Run it
-./target/release/tunelo-gateway --domain yourdomain.com
+./target/release/tunelo-relay --domain yourdomain.com
 
 # Point your clients to it
-tunelo http 3000 --gateway yourdomain.com:4433`}</CodeBlock>
+tunelo http 3000 --relay yourdomain.com:4433`}</CodeBlock>
 
         <P>You need:</P>
         <List>
           <Li>A domain with wildcard DNS (<Code>*.yourdomain.com</Code> → your VPS IP)</Li>
           <Li>A wildcard TLS certificate (Let's Encrypt + DNS-01 challenge)</Li>
-          <Li>Nginx for TLS termination, proxying <Code>*.yourdomain.com:443</Code> → gateway <Code>:8080</Code></Li>
+          <Li>Nginx for TLS termination, proxying <Code>*.yourdomain.com:443</Code> → relay <Code>:8080</Code></Li>
           <Li>UDP port 4433 open for QUIC tunnel connections</Li>
         </List>
       </Section>
 
       <Section id="performance" title="Performance">
         <P>
-          Measured on localhost. Zero errors under 5,000 request stress test. The gateway is a <strong>data-plane proxy</strong> — it copies bytes, not parses them.
+          Measured on localhost. Zero errors under 5,000 request stress test. The relay is a <strong>data-plane proxy</strong> — it copies bytes, not parses them.
         </P>
 
         <ComparisonTable
           headers={['Metric', 'Value']}
           rows={[
-            ['Gateway memory', '8 MB RSS'],
+            ['Relay memory', '8 MB RSS'],
             ['Client memory', '8 MB RSS'],
-            ['Binary size (gateway)', '3.5 MB (stripped, LTO)'],
+            ['Binary size (relay)', '3.5 MB (stripped, LTO)'],
             ['Binary size (client)', '3.3 MB (stripped, LTO)'],
             ['Tunnel overhead vs direct', '~14% (0.56s vs 0.49s / 100 req)'],
             ['Sequential latency', '~6ms/req (localhost)'],
@@ -257,7 +257,7 @@ tunelo http 3000 --gateway yourdomain.com:4433`}</CodeBlock>
           rows={[
             ['Routing', 'By TCP port', 'By subdomain (hostname)'],
             ['Transport', 'TCP', 'QUIC (multiplexed)'],
-            ['TLS', 'No built-in', 'TLS at gateway'],
+            ['TLS', 'No built-in', 'TLS at relay'],
             ['Public URL', 'bore.pub:PORT', 'subdomain.tunelo.net'],
             ['HTTP-aware', 'No', 'Yes (Host header routing)'],
           ]}
@@ -271,22 +271,22 @@ tunelo http 3000 --gateway yourdomain.com:4433`}</CodeBlock>
             ['Vendor lock-in', 'Cloudflare only', 'Any VPS'],
             ['Transport', 'HTTP/2 (h2mux)', 'QUIC'],
             ['Complexity', 'Named tunnels, DNS config', 'One command'],
-            ['Open source gateway', 'No', 'Yes'],
+            ['Open source relay', 'No', 'Yes'],
           ]}
         />
       </Section>
 
       <Section id="security" title="Security">
         <P>
-          The tunnel is <strong>outbound-only</strong> — the client connects to the gateway, not the other way around. No inbound ports needed on your machine.
+          The tunnel is <strong>outbound-only</strong> — the client connects to the relay, not the other way around. No inbound ports needed on your machine.
         </P>
 
         <List>
           <Li><strong>QUIC encryption</strong> — tunnel traffic is encrypted with TLS 1.3 (rustls)</Li>
-          <Li><strong>TLS termination</strong> — public HTTPS at the gateway with Let's Encrypt certificates</Li>
-          <Li><strong>No data storage</strong> — the gateway copies bytes, doesn't inspect or store them</Li>
+          <Li><strong>TLS termination</strong> — public HTTPS at the relay with Let's Encrypt certificates</Li>
+          <Li><strong>No data storage</strong> — the relay copies bytes, doesn't inspect or store them</Li>
           <Li><strong>Private tunnels</strong> — optional access code protection with cookie-based auth</Li>
-          <Li><strong>Self-hostable</strong> — run your own gateway, control your own data</Li>
+          <Li><strong>Self-hostable</strong> — run your own relay, control your own data</Li>
         </List>
       </Section>
 

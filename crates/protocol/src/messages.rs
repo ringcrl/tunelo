@@ -1,4 +1,4 @@
-//! Protocol messages exchanged between client and gateway.
+//! Protocol messages exchanged between client and relay.
 //!
 //! Design inspired by bore's ClientMessage/ServerMessage enum pattern,
 //! but extended for hostname-based routing (like frp/cloudflared).
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 // These are exchanged on the first QUIC bidi stream (the "control stream").
 // Low frequency — one Register at startup, then periodic heartbeats.
 
-/// Messages sent from the client to the gateway on the control stream.
+/// Messages sent from the client to the relay on the control stream.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientControl {
     /// Initial registration request.
@@ -24,17 +24,17 @@ pub enum ClientControl {
         requested_subdomain: Option<String>,
         /// Optional access code for private tunnels (like a Zoom meeting password).
         /// If set, visitors must enter this code before accessing the tunnel.
-        /// The gateway serves an auth page and sets a cookie after validation.
+        /// The relay serves an auth page and sets a cookie after validation.
         #[serde(default)]
         access_code: Option<String>,
     },
-    /// Response to a heartbeat ping from the gateway.
+    /// Response to a heartbeat ping from the relay.
     HeartbeatAck,
 }
 
-/// Messages sent from the gateway to the client on the control stream.
+/// Messages sent from the relay to the client on the control stream.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum GatewayControl {
+pub enum RelayControl {
     /// Successful registration response.
     Registered {
         /// The full public hostname, e.g. "abc123.tunelo.net"
@@ -53,7 +53,7 @@ pub enum GatewayControl {
 // ─── Data Streams ────────────────────────────────────────────────────────────
 //
 // Data streams carry raw HTTP bytes with ZERO parsing on the tunnel path.
-// The gateway peeks at the Host header *before* opening the QUIC stream,
+// The relay peeks at the Host header *before* opening the QUIC stream,
 // then blindly relays all bytes. No protocol messages on data streams at all.
 //
 // This is the key performance insight: the tunnel is a transparent byte pipe.
