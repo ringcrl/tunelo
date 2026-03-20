@@ -1,7 +1,6 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { CaretLeft } from "@phosphor-icons/react";
+import { ArrowLeft, DownloadSimple } from "@phosphor-icons/react";
+import { rawUrl } from "@/api";
 import FileViewer from "@/viewers/FileViewer";
 
 export default function Viewer() {
@@ -11,22 +10,50 @@ export default function Viewer() {
   const parentDir = path.substring(0, path.lastIndexOf("/") + 1) || "/";
 
   return (
-    <div className="min-h-screen bg-[var(--dropbox-gray-50)] view-enter">
-      <header className="bg-white border-b border-[var(--dropbox-gray-300)] px-6 py-3 flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
+    <div className="min-h-screen view-enter" style={{ background: "var(--dropbox-white)" }}>
+      {/* ── Top bar ─────────────────────────────────────── */}
+      <header style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "0 16px 0 8px",
+        height: 56,
+        borderBottom: "1px solid var(--dropbox-gray-200)",
+        background: "var(--dropbox-white)",
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+      }}>
+        <button
+          className="btn-ghost"
           onClick={() => navigate({ to: "/", search: { path: parentDir } })}
-          className="text-[var(--dropbox-blue)] hover:text-[var(--dropbox-blue-hover)]"
         >
-          <CaretLeft className="size-4" weight="bold" />
-          Back
-        </Button>
-        <Separator orientation="vertical" className="h-5" />
-        <span className="text-sm text-[var(--dropbox-gray-900)] font-medium truncate">
+          <ArrowLeft size={18} weight="bold" />
+          <span className="hidden sm:inline">Back</span>
+        </button>
+
+        <div style={{ width: 1, height: 24, background: "var(--dropbox-gray-200)", flexShrink: 0 }} />
+
+        <span style={{
+          fontSize: 15,
+          fontWeight: 500,
+          color: "var(--dropbox-gray-900)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          flex: 1,
+          padding: "0 4px",
+        }}>
           {fileName}
         </span>
+
+        <a href={rawUrl(path)} download className="btn-primary">
+          <DownloadSimple size={16} weight="bold" />
+          <span className="hidden sm:inline">Download</span>
+        </a>
       </header>
+
+      {/* ── Preview ─────────────────────────────────────── */}
       <FileViewer path={path} name={fileName} />
     </div>
   );
