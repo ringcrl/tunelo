@@ -17,7 +17,7 @@ cd "$PROJECT_DIR"
 cargo build --release --target aarch64-unknown-linux-musl --bin tunelo-gateway
 
 echo ""
-echo "=== 2. Build landing page (tunelo.net) ==="
+echo "=== 2. Build website (tunelo.net) ==="
 cd "$PROJECT_DIR/website"
 pnpm install
 pnpm build
@@ -46,12 +46,12 @@ sudo mv /tmp/tunelo-gateway /opt/tunelo/bin/tunelo-gateway
 sudo chmod +x /opt/tunelo/bin/tunelo-gateway
 sudo chown tunelo:tunelo /opt/tunelo/bin/tunelo-gateway
 
-# Install landing page
-sudo mkdir -p /opt/tunelo/landing
-sudo rm -rf /opt/tunelo/landing/*
-sudo cp -r /tmp/tunelo-landing/* /opt/tunelo/landing/
-sudo chown -R tunelo:tunelo /opt/tunelo/landing/
-rm -rf /tmp/tunelo-landing
+# Install website
+sudo mkdir -p /opt/tunelo/website
+sudo rm -rf /opt/tunelo/website/*
+sudo cp -r /tmp/tunelo-website/* /opt/tunelo/website/
+sudo chown -R tunelo:tunelo /opt/tunelo/website/
+rm -rf /tmp/tunelo-website
 
 # Install nginx config
 sudo mv /tmp/tunelo.net.conf /etc/nginx/sites-available/tunelo.net
