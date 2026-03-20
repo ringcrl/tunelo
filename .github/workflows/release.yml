@@ -11,6 +11,7 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
@@ -36,18 +37,18 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install musl tools (Linux)
-        if: contains(matrix.target, 'linux')
+      - name: Setup build environment
         run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools
-          # For aarch64 cross-compilation
-          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-musl" ]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu
-            mkdir -p .cargo
-            echo '[target.aarch64-unknown-linux-musl]' >> .cargo/config.toml
-            echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
-            echo 'rustflags = ["-C", "target-feature=+crt-static"]' >> .cargo/config.toml
+          # Remove local .cargo/config.toml (macOS-specific)
+          rm -f .cargo/config.toml
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            sudo apt-get update
+            sudo apt-get install -y musl-tools
+            if [ "${{ matrix.target }}" = "aarch64-unknown-linux-musl" ]; then
+              sudo apt-get install -y gcc-aarch64-linux-gnu
+              mkdir -p .cargo
+              printf '[target.aarch64-unknown-linux-musl]\nlinker = "aarch64-linux-gnu-gcc"\n' > .cargo/config.toml
+            fi
           fi
 
       - name: Create dummy web/dist for include_dir
