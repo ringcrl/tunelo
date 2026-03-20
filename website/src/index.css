@@ -1,4 +1,8 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import './editorial.css';
+@import './editorial-prism.css';
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 /* ===== Fonts ===== */
 @font-face {
@@ -9,13 +13,19 @@
   src: url('https://rsms.me/inter/font-files/InterVariable.woff2') format('woff2');
 }
 
-/* ===== Design tokens ===== */
 :root {
-  --font-primary: 'Inter var', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-code: 'SF Mono', 'SFMono-Regular', 'Consolas', 'Liberation Mono', Menlo, Courier, monospace;
+  /* ===== Editorial design tokens ===== */
+  --font-primary:
+    'Inter var', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-code:
+    'SF Mono', 'SFMono-Regular', 'Consolas', 'Liberation Mono', Menlo,
+    Courier, monospace;
 
+  /* Bleed: code blocks extend beyond prose column */
   --bleed: 44px;
 
+  /* Colors — near-black, not pure black */
   --text-primary: rgb(17, 17, 17);
   --text-secondary: rgba(0, 0, 0, 0.4);
   --text-tertiary: rgba(0, 0, 0, 0.25);
@@ -28,10 +38,24 @@
   --code-line-nr: rgba(0, 0, 0, 0.3);
   --selection-bg: rgba(0, 0, 0, 0.08);
   --link-accent: #0969da;
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
+  /* Header fade gradient stops (white) */
+  --fade-0: rgb(255, 255, 255);
+  --fade-1: rgba(255, 255, 255, 0.737);
+  --fade-2: rgba(255, 255, 255, 0.541);
+  --fade-3: rgba(255, 255, 255, 0.382);
+  --fade-4: rgba(255, 255, 255, 0.278);
+  --fade-5: rgba(255, 255, 255, 0.194);
+  --fade-6: rgba(255, 255, 255, 0.126);
+  --fade-7: rgba(255, 255, 255, 0.075);
+  --fade-8: rgba(255, 255, 255, 0.042);
+  --fade-9: rgba(255, 255, 255, 0.021);
+  --fade-10: rgba(255, 255, 255, 0.008);
+  --fade-11: rgba(255, 255, 255, 0.002);
+  --fade-12: rgba(255, 255, 255, 0);
+
+  /* Dark mode overrides */
+  @variant dark {
     --text-primary: rgba(255, 255, 255, 0.9);
     --text-secondary: rgba(255, 255, 255, 0.45);
     --text-tertiary: rgba(255, 255, 255, 0.25);
@@ -44,16 +68,25 @@
     --code-line-nr: rgba(255, 255, 255, 0.3);
     --selection-bg: rgba(255, 255, 255, 0.1);
     --link-accent: #aadcff;
+
+    /* Header fade gradient stops (dark) */
+    --fade-0: rgb(17, 17, 17);
+    --fade-1: rgba(17, 17, 17, 0.737);
+    --fade-2: rgba(17, 17, 17, 0.541);
+    --fade-3: rgba(17, 17, 17, 0.382);
+    --fade-4: rgba(17, 17, 17, 0.278);
+    --fade-5: rgba(17, 17, 17, 0.194);
+    --fade-6: rgba(17, 17, 17, 0.126);
+    --fade-7: rgba(17, 17, 17, 0.075);
+    --fade-8: rgba(17, 17, 17, 0.042);
+    --fade-9: rgba(17, 17, 17, 0.021);
+    --fade-10: rgba(17, 17, 17, 0.008);
+    --fade-11: rgba(17, 17, 17, 0.002);
+    --fade-12: rgba(17, 17, 17, 0);
   }
 }
 
 /* ===== Base ===== */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 html {
   scroll-behavior: smooth;
 }
@@ -68,161 +101,24 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-::selection {
-  background: var(--selection-bg);
-}
-
-/* ===== Header fade gradient ===== */
-.editorial-page::before {
-  content: '';
-  pointer-events: none;
-  z-index: 9;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 8rem;
-  background: linear-gradient(
-    var(--bg) 0px,
-    color-mix(in srgb, var(--bg) 74%, transparent) 19%,
-    color-mix(in srgb, var(--bg) 54%, transparent) 34%,
-    color-mix(in srgb, var(--bg) 38%, transparent) 47%,
-    color-mix(in srgb, var(--bg) 28%, transparent) 56.5%,
-    color-mix(in srgb, var(--bg) 19%, transparent) 65%,
-    color-mix(in srgb, var(--bg) 13%, transparent) 73%,
-    color-mix(in srgb, var(--bg) 8%, transparent) 80.2%,
-    transparent 100%
-  );
-}
-
-/* ===== Editorial prose ===== */
-.editorial-prose {
-  font-family: var(--font-primary);
-  font-size: 14px;
-  font-weight: 475;
-  line-height: 22px;
-  letter-spacing: -0.09px;
-  color: var(--text-primary);
-  opacity: 0.82;
-}
-
-.editorial-prose strong {
-  opacity: calc(1 / 0.82);
-  font-weight: 600;
-}
-
-/* ===== Bleed ===== */
-.bleed {
-  margin-left: calc(-1 * var(--bleed));
-  margin-right: calc(-1 * var(--bleed));
-}
-
-@media (max-width: 650px) {
-  .bleed {
-    margin-left: 0;
-    margin-right: 0;
-  }
-}
-
-/* ===== Inline code ===== */
-.inline-code {
-  position: relative;
-  display: inline-block;
-  font-family: var(--font-code);
-  font-size: 12.6px;
-  font-weight: 500;
-  line-height: 12.6px;
-  letter-spacing: 0.01em;
-  padding: 1.6px 3.2px;
-  color: rgba(0, 0, 0, 0.75);
-}
-
-.inline-code::before {
-  content: '';
-  position: absolute;
-  inset: -1.26px 0;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 4px;
-  z-index: -1;
-}
-
-@media (prefers-color-scheme: dark) {
-  .inline-code {
-    color: rgba(255, 255, 255, 0.75);
-  }
-  .inline-code::before {
-    background: rgba(255, 255, 255, 0.08);
-  }
-}
-
-/* ===== Prism token colors ===== */
-.token.comment,
-.token.prolog,
-.token.doctype,
-.token.cdata { color: var(--text-secondary); }
-.token.punctuation { color: var(--text-muted); }
-.token.property,
-.token.tag,
-.token.boolean,
-.token.number,
-.token.constant,
-.token.symbol { color: #0550ae; }
-.token.selector,
-.token.attr-name,
-.token.string,
-.token.char,
-.token.builtin { color: #0a3069; }
-.token.operator,
-.token.entity,
-.token.url,
-.token.variable { color: #953800; }
-.token.atrule,
-.token.attr-value,
-.token.keyword { color: #cf222e; }
-.token.function,
-.token.class-name { color: #8250df; }
-.token.regex,
-.token.important { color: #953800; }
-
-@media (prefers-color-scheme: dark) {
-  .token.property,
-  .token.tag,
-  .token.boolean,
-  .token.number,
-  .token.constant,
-  .token.symbol { color: #79c0ff; }
-  .token.selector,
-  .token.attr-name,
-  .token.string,
-  .token.char,
-  .token.builtin { color: #a5d6ff; }
-  .token.operator,
-  .token.entity,
-  .token.url,
-  .token.variable { color: #ffa657; }
-  .token.atrule,
-  .token.attr-value,
-  .token.keyword { color: #ff7b72; }
-  .token.function,
-  .token.class-name { color: #d2a8ff; }
-  .token.regex,
-  .token.important { color: #ffa657; }
-}
-
 /* ===== Custom scrollbar ===== */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.3);
 }
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+.scrollbar-thumb {
+  @variant dark {
+    background: rgba(255, 255, 255, 0.15);
+  }
 }
