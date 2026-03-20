@@ -1,14 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { arrayBufferQueryOptions } from "@/lib/query";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ArrowsOut, ArrowsIn, Minus, Plus } from "@phosphor-icons/react";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -20,13 +12,10 @@ export default function PdfViewer({ path }: { path: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<any>(null);
   const [numPages, setNumPages] = useState(0);
-  const [scale, setScale] = useState(1.5);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const scale = 1.5;
 
   const { data: pdfData, error } = useQuery(arrayBufferQueryOptions(path));
 
-  // Load PDF document once data is available
   useEffect(() => {
     if (!pdfData) return;
     let cancelled = false;
@@ -38,7 +27,6 @@ export default function PdfViewer({ path }: { path: string }) {
     return () => { cancelled = true; };
   }, [pdfData]);
 
-  // Render pages when scale changes
   useEffect(() => {
     if (!pdfRef.current || !containerRef.current) return;
     let cancelled = false;
@@ -59,7 +47,10 @@ export default function PdfViewer({ path }: { path: string }) {
         canvas.height = renderViewport.height;
         canvas.style.width = `${cssViewport.width}px`;
         canvas.style.height = `${cssViewport.height}px`;
-        canvas.className = "shadow-md rounded-lg mb-4 mx-auto block";
+        canvas.style.display = "block";
+        canvas.style.margin = "0 auto 16px";
+        canvas.style.borderRadius = "4px";
+        canvas.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
         container.appendChild(canvas);
 
         const ctx = canvas.getContext("2d")!;
@@ -68,87 +59,40 @@ export default function PdfViewer({ path }: { path: string }) {
     })();
 
     return () => { cancelled = true; };
-  }, [scale, numPages]);
-
-  const zoomIn = useCallback(() => setScale((s) => Math.min(s + 0.25, 4)), []);
-  const zoomOut = useCallback(() => setScale((s) => Math.max(s - 0.25, 0.5)), []);
-  const fitWidth = useCallback(() => setScale(1.5), []);
-
-  const toggleFullscreen = useCallback(() => {
-    const el = wrapperRef.current;
-    if (!el) return;
-    if (!document.fullscreenElement) {
-      el.requestFullscreen().then(() => setIsFullscreen(true));
-    } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false));
-    }
-  }, []);
-
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
+  }, [numPages]);
 
   if (error) {
     return (
-      <div className="flex items-center justify-center py-20 text-[var(--dropbox-red)] text-sm">
+      <div style={{ padding: 32, textAlign: "center", color: "var(--dropbox-red)", fontSize: 14 }}>
         Failed to load PDF: {error.message}
       </div>
     );
   }
 
-  const pct = Math.round(scale * 100);
-
   return (
-    <div ref={wrapperRef} className="bg-[var(--dropbox-gray-100)] min-h-[calc(100vh-53px)] flex flex-col">
-      {/* Toolbar */}
-      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-[var(--dropbox-gray-300)] px-4 py-2 flex items-center justify-center gap-1">
-        <Tooltip>
-          <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={zoomOut} />}>
-            <Minus className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent>Zoom out</TooltipContent>
-        </Tooltip>
-
-        <span className="text-xs text-[var(--dropbox-gray-500)] w-12 text-center tabular-nums font-medium">
-          {pct}%
-        </span>
-
-        <Tooltip>
-          <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={zoomIn} />}>
-            <Plus className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent>Zoom in</TooltipContent>
-        </Tooltip>
-
-        <Separator orientation="vertical" className="h-5 mx-1" />
-
-        <Button variant="ghost" size="sm" onClick={fitWidth} className="text-xs text-[var(--dropbox-gray-500)]">
-          Fit
-        </Button>
-
-        <Tooltip>
-          <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={toggleFullscreen} />}>
-            {isFullscreen ? <ArrowsIn className="size-4" /> : <ArrowsOut className="size-4" />}
-          </TooltipTrigger>
-          <TooltipContent>{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</TooltipContent>
-        </Tooltip>
-
-        {numPages > 0 && (
-          <>
-            <Separator orientation="vertical" className="h-5 mx-1" />
-            <span className="text-xs text-[var(--dropbox-gray-500)]">
-              {numPages} page{numPages > 1 ? "s" : ""}
-            </span>
-          </>
-        )}
-      </div>
-
-      {/* Pages */}
-      <div className="flex-1 overflow-auto py-6">
-        <div ref={containerRef} className="mx-auto px-4" style={{ maxWidth: "100%" }} />
-      </div>
+    <div style={{
+      minHeight: "calc(100vh - 56px)",
+      background: "var(--dropbox-gray-100)",
+      overflow: "auto",
+      padding: "24px 16px",
+    }}>
+      {numPages === 0 && (
+        <div style={{ display: "flex", justifyContent: "center", padding: 64 }}>
+          <div style={{
+            width: 24, height: 24,
+            border: "2px solid var(--dropbox-blue)",
+            borderTopColor: "transparent",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+          }} />
+        </div>
+      )}
+      <div ref={containerRef} style={{ maxWidth: 900, margin: "0 auto" }} />
+      {numPages > 0 && (
+        <div style={{ textAlign: "center", padding: "8px 0 16px", fontSize: 12, color: "var(--dropbox-gray-500)" }}>
+          {numPages} page{numPages > 1 ? "s" : ""}
+        </div>
+      )}
     </div>
   );
 }

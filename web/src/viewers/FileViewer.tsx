@@ -1,7 +1,6 @@
 import { detectViewer } from "@/types";
 import { rawUrl } from "@/api";
-import { Button } from "@/components/ui/button";
-import { DownloadSimple } from "@phosphor-icons/react";
+import { DownloadSimple, File } from "@phosphor-icons/react";
 import HtmlViewer from "./HtmlViewer";
 import ImageViewer from "./ImageViewer";
 import VideoViewer from "./VideoViewer";
@@ -33,18 +32,40 @@ export default function FileViewer({ path, name }: Props) {
     case "text":      return <CodeViewer path={path} name={name} />;
     default:
       return (
-        <div className="flex flex-col items-center justify-center py-24 gap-5 content-reveal">
-          <div className="w-20 h-20 rounded-2xl bg-[var(--dropbox-gray-100)] flex items-center justify-center">
-            <span className="text-4xl">📄</span>
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "calc(100vh - 56px)",
+          background: "var(--dropbox-gray-50)",
+          gap: 20,
+          padding: 32,
+        }}>
+          <div style={{
+            width: 80,
+            height: 80,
+            borderRadius: 20,
+            background: "var(--dropbox-white)",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            <File size={36} weight="duotone" style={{ color: "var(--dropbox-gray-500)" }} />
           </div>
-          <div className="text-center">
-            <p className="text-sm font-medium text-[var(--dropbox-gray-900)]">{name}</p>
-            <p className="text-xs text-[var(--dropbox-gray-500)] mt-1">No preview available</p>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: "var(--dropbox-gray-900)" }}>{name}</div>
+            <div style={{ fontSize: 13, color: "var(--dropbox-gray-500)", marginTop: 4 }}>No preview available</div>
           </div>
-          <Button render={<a href={rawUrl(path)} download />}>
-            <DownloadSimple className="size-4" />
+          <a
+            href={rawUrl(path)}
+            download
+            className="btn-primary"
+          >
+            <DownloadSimple size={16} weight="bold" />
             Download
-          </Button>
+          </a>
         </div>
       );
   }

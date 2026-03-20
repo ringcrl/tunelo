@@ -1,6 +1,10 @@
 # Rust
 target/
 
+# Private skills (not published)
+skills/DEPLOY.md
+skills/TEST.md
+
 # Node
 node_modules/
 dist/

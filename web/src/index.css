@@ -231,6 +231,10 @@ body {
   50% { opacity: 0.5; }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Reduced motion ───────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .view-enter,

@@ -17,7 +17,6 @@ import {
   FileCsv,
   FileHtml,
   House,
-  FolderOpen,
 } from "@phosphor-icons/react";
 
 export default function Explorer() {
@@ -39,23 +38,8 @@ export default function Explorer() {
 
   return (
     <div className="min-h-screen view-enter" style={{ background: "var(--dropbox-gray-50)" }}>
-      {/* ── Header ──────────────────────────────────────── */}
-      <header style={{ background: "var(--dropbox-white)", borderBottom: "1px solid var(--dropbox-gray-200)" }}>
-        <div style={{ maxWidth: 1120, margin: "0 auto", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <FolderOpen size={26} weight="fill" style={{ color: "var(--dropbox-blue)" }} />
-            <span style={{ fontSize: 17, fontWeight: 600, color: "var(--dropbox-gray-900)", letterSpacing: "-0.01em" }}>
-              tunelo
-            </span>
-          </div>
-          <span style={{ fontSize: 12, color: "var(--dropbox-gray-500)" }}>
-            {entries ? `${entries.length} items` : ""}
-          </span>
-        </div>
-      </header>
-
       {/* ── Breadcrumbs ─────────────────────────────────── */}
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "20px 24px 4px" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "24px 24px 4px" }}>
         <nav style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
           {path !== "/" && (
             <button

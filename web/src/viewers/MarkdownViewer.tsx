@@ -6,23 +6,23 @@ export default function MarkdownViewer({ path }: { path: string }) {
   const { data: content, isLoading, error } = useQuery(textQueryOptions(path));
 
   if (error) {
-    return <div className="p-8 text-[var(--dropbox-red)] text-sm">{error.message}</div>;
+    return <div style={{ padding: 32, color: "var(--dropbox-red)", fontSize: 14 }}>{error.message}</div>;
   }
 
   if (isLoading || content === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-53px)]">
-        <div className="w-5 h-5 border-2 border-[var(--dropbox-blue)] border-t-transparent rounded-full animate-spin" />
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "calc(100vh - 56px)" }}>
+        <div style={{ width: 24, height: 24, border: "2px solid var(--dropbox-blue)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-53px)] bg-[#FAFAF9]">
-      <article className="tunelo-markdown max-w-3xl mx-auto px-10 py-12 content-reveal">
+    <div style={{ minHeight: "calc(100vh - 56px)", background: "var(--dropbox-white)" }}>
+      <article style={{ maxWidth: 720, margin: "0 auto", padding: "40px 32px 64px" }}>
         <MarkdownPreview
           source={content}
-          style={{ background: "transparent" }}
+          style={{ background: "transparent", fontSize: 15, lineHeight: 1.7 }}
           wrapperElement={{ "data-color-mode": "light" } as any}
         />
       </article>
