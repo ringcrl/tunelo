@@ -32,26 +32,33 @@ Browser → HTTPS → Relay → QUIC stream → Client → localhost:3000
 - **Decoupled client + relay** — client defaults to `tunelo.net`, or self-host your own relay
 - **One binary** — `tunelo port`, `tunelo serve`, `tunelo relay` — client and server in one
 
+## Install
+
+```bash
+curl -fsSL https://tunelo.net/install.sh | sh
+```
+
 ## Quick Start
 
 ```bash
-# Build
-cargo build --release
+# Expose a local service (defaults to public relay at tunelo.net)
+tunelo http 3000
 
-# Terminal 1: Start a relay (or use the public one at tunelo.net)
-./target/release/tunelo relay --domain localhost
+# Serve a directory with web explorer
+tunelo serve .
 
-# Terminal 2: Expose a local service
-./target/release/tunelo port 3000
+# Local-only preview (no tunnel)
+tunelo serve . --local
+```
 
-# Or run a command and tunnel it
-./target/release/tunelo port 3000 -- pnpm dev
+## Self-Host
 
-# Or serve a directory
-./target/release/tunelo serve .
+```bash
+# Run your own relay on any VPS
+tunelo relay --domain yourdomain.com
 
-# Or just preview locally (no tunnel)
-./target/release/tunelo serve . --local
+# Point clients to your relay
+tunelo http 3000 --relay yourdomain.com:4433
 ```
 
 ## CLI
