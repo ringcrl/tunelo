@@ -11,9 +11,10 @@ OS="$(uname -s)"
 ARCH="$(uname -m)"
 
 case "$OS" in
-  Linux)  os="linux" ;;
-  Darwin) os="macos" ;;
-  *)      echo "Error: unsupported OS: $OS"; exit 1 ;;
+  Linux)          os="linux" ;;
+  Darwin)         os="macos" ;;
+  MINGW*|MSYS*|CYGWIN*)  os="windows" ;;
+  *)              echo "Error: unsupported OS: $OS"; exit 1 ;;
 esac
 
 case "$ARCH" in
@@ -23,6 +24,12 @@ case "$ARCH" in
 esac
 
 PLATFORM="${os}-${arch}"
+
+# Windows only provides amd64 for now
+if [ "$os" = "windows" ] && [ "$arch" != "amd64" ]; then
+  echo "Error: Windows builds are only available for amd64 (x86_64)"
+  exit 1
+fi
 
 # ── Get latest version ─────────────────────────────────────────
 echo "→ Detecting latest version..."
@@ -37,26 +44,45 @@ fi
 echo "→ Installing tunelo ${VERSION} (${PLATFORM})..."
 
 # ── Download ───────────────────────────────────────────────────
-URL="https://github.com/${REPO}/releases/download/${VERSION}/tunelo-${PLATFORM}"
+if [ "$os" = "windows" ]; then
+  FILENAME="tunelo-${PLATFORM}.exe"
+else
+  FILENAME="tunelo-${PLATFORM}"
+fi
+
+URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILENAME}"
 TMPFILE=$(mktemp)
 trap 'rm -f "$TMPFILE"' EXIT
 
 curl -fsSL "$URL" -o "$TMPFILE"
-chmod +x "$TMPFILE"
 
 # ── Install ────────────────────────────────────────────────────
-if [ -w "$INSTALL_DIR" ]; then
-  mv "$TMPFILE" "${INSTALL_DIR}/${BINARY}"
+if [ "$os" = "windows" ]; then
+  # Install to user's local bin on Windows (Git Bash / MSYS2)
+  WIN_INSTALL_DIR="$HOME/bin"
+  mkdir -p "$WIN_INSTALL_DIR"
+  mv "$TMPFILE" "${WIN_INSTALL_DIR}/${BINARY}.exe"
+  echo ""
+  echo "  ✔ tunelo ${VERSION} installed to ${WIN_INSTALL_DIR}/${BINARY}.exe"
+  echo ""
+  echo "  Make sure ${WIN_INSTALL_DIR} is in your PATH."
+  echo "  Or use PowerShell to install system-wide (see below)."
+  echo ""
 else
-  echo "→ Need sudo to install to ${INSTALL_DIR}"
-  sudo mv "$TMPFILE" "${INSTALL_DIR}/${BINARY}"
+  chmod +x "$TMPFILE"
+  if [ -w "$INSTALL_DIR" ]; then
+    mv "$TMPFILE" "${INSTALL_DIR}/${BINARY}"
+  else
+    echo "→ Need sudo to install to ${INSTALL_DIR}"
+    sudo mv "$TMPFILE" "${INSTALL_DIR}/${BINARY}"
+  fi
+  echo ""
+  echo "  ✔ tunelo ${VERSION} installed to ${INSTALL_DIR}/${BINARY}"
+  echo ""
 fi
 
-echo ""
-echo "  ✔ tunelo ${VERSION} installed to ${INSTALL_DIR}/${BINARY}"
-echo ""
 echo "  Get started:"
-echo "    tunelo http 3000        expose a local service"
+echo "    tunelo port 3000        expose a local service"
 echo "    tunelo serve .          share files"
 echo "    tunelo --help           see all commands"
 echo ""

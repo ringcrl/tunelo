@@ -34,9 +34,23 @@ Browser → HTTPS → Relay → QUIC stream → Client → localhost:3000
 
 ## Install
 
+**macOS / Linux:**
 ```bash
 curl -fsSL https://tunelo.net/install.sh | sh
 ```
+
+**Windows (PowerShell):**
+```powershell
+irm https://tunelo.net/install.ps1 | iex
+```
+
+### Supported Platforms
+
+| OS | Architecture | Binary |
+|----|-------------|--------|
+| Linux | x86_64 / arm64 | `tunelo-linux-amd64` / `tunelo-linux-arm64` |
+| macOS | x86_64 / arm64 | `tunelo-macos-amd64` / `tunelo-macos-arm64` |
+| Windows | x86_64 | `tunelo-windows-amd64.exe` |
 
 ## Quick Start
 

@@ -26,6 +26,9 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-latest
             asset: tunelo-macos-arm64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            asset: tunelo-windows-amd64.exe
 
     runs-on: ${{ matrix.os }}
 
@@ -38,6 +41,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Setup build environment
+        if: runner.os != 'Windows'
         run: |
           # Remove local .cargo/config.toml (macOS-specific)
           rm -f .cargo/config.toml
@@ -51,6 +55,11 @@ jobs:
             fi
           fi
 
+      - name: Setup build environment (Windows)
+        if: runner.os == 'Windows'
+        run: Remove-Item -Force -ErrorAction SilentlyContinue .cargo/config.toml
+        shell: pwsh
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -62,12 +71,19 @@ jobs:
           npm install -g pnpm
           pnpm install
           pnpm build
+        shell: bash
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }} --bin tunelo
 
       - name: Rename binary
+        if: runner.os != 'Windows'
         run: cp target/${{ matrix.target }}/release/tunelo ${{ matrix.asset }}
+
+      - name: Rename binary (Windows)
+        if: runner.os == 'Windows'
+        run: Copy-Item "target/${{ matrix.target }}/release/tunelo.exe" "${{ matrix.asset }}"
+        shell: pwsh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -84,7 +100,7 @@ jobs:
           merge-multiple: true
 
       - name: Make binaries executable
-        run: chmod +x tunelo-*
+        run: chmod +x tunelo-*-amd64 tunelo-*-arm64 2>/dev/null || true
 
       - name: Create release
         uses: softprops/action-gh-release@v2
