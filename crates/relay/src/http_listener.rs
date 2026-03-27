@@ -76,11 +76,17 @@ async fn handle_connection(mut stream: TcpStream, router: &Router) -> Result<()>
         }
     };
 
+    // ── Log WebSocket upgrades ─────────────────────────────────────────
+    let is_ws = is_websocket_upgrade(raw);
+    if is_ws {
+        debug!(subdomain = %subdomain, "WebSocket upgrade detected, passing through");
+    }
+
     // ── Public tunnel: relay directly ──────────────────────────────────
     let expected = match &session.password {
         Some(pw) => pw,
         None => {
-            debug!(subdomain = %subdomain, "routing (public)");
+            debug!(subdomain = %subdomain, is_ws, "routing (public)");
             if let Err(e) = proxy::relay_connection(&session, stream).await {
                 warn!(error = %e, subdomain = %subdomain, "relay error");
             }
@@ -93,7 +99,7 @@ async fn handle_connection(mut stream: TcpStream, router: &Router) -> Result<()>
     // 1. Cookie — subsequent visits (most common, check first)
     if let Some(ref c) = extract_cookie(raw, "__tunelo_password") {
         if constant_time_eq(c.as_bytes(), expected.as_bytes()) {
-            debug!(subdomain = %subdomain, "routing (cookie auth)");
+            debug!(subdomain = %subdomain, is_ws, "routing (cookie auth)");
             if let Err(e) = proxy::relay_connection(&session, stream).await {
                 warn!(error = %e, subdomain = %subdomain, "relay error");
             }
@@ -104,6 +110,14 @@ async fn handle_connection(mut stream: TcpStream, router: &Router) -> Result<()>
     // 2. ?pwd= in URL — first click from shared link
     if let Some(ref pwd) = extract_query_param(raw, "pwd") {
         if constant_time_eq(pwd.as_bytes(), expected.as_bytes()) {
+            // WebSocket with ?pwd= — relay directly (browsers can't set cookies on WS)
+            if is_ws {
+                debug!(subdomain = %subdomain, "WebSocket auth via ?pwd=, relaying");
+                if let Err(e) = proxy::relay_connection(&session, stream).await {
+                    warn!(error = %e, subdomain = %subdomain, "relay error");
+                }
+                return Ok(());
+            }
             // Consume the request (don't relay), set cookie, redirect to /
             consume_request(&mut stream).await;
             send_auth_redirect(&mut stream, expected).await;
@@ -218,6 +232,36 @@ async fn send_auth_redirect(stream: &mut TcpStream, password: &str) {
 }
 
 // ─── HTTP parsing helpers ────────────────────────────────────────────────────
+
+/// Detect WebSocket upgrade requests (Connection: Upgrade + Upgrade: websocket).
+fn is_websocket_upgrade(raw: &[u8]) -> bool {
+    let mut headers = [httparse::EMPTY_HEADER; 32];
+    let mut req = httparse::Request::new(&mut headers);
+    let _ = req.parse(raw);
+
+    let mut has_upgrade_header = false;
+    let mut has_websocket_upgrade = false;
+
+    for h in req.headers.iter() {
+        if h.name.eq_ignore_ascii_case("connection") {
+            if let Ok(val) = std::str::from_utf8(h.value) {
+                // Connection header can have multiple values: "keep-alive, Upgrade"
+                if val.split(',').any(|v| v.trim().eq_ignore_ascii_case("upgrade")) {
+                    has_upgrade_header = true;
+                }
+            }
+        }
+        if h.name.eq_ignore_ascii_case("upgrade") {
+            if let Ok(val) = std::str::from_utf8(h.value) {
+                if val.eq_ignore_ascii_case("websocket") {
+                    has_websocket_upgrade = true;
+                }
+            }
+        }
+    }
+
+    has_upgrade_header && has_websocket_upgrade
+}
 
 fn extract_host(raw: &[u8]) -> Option<String> {
     let mut headers = [httparse::EMPTY_HEADER; 32];
@@ -427,5 +471,32 @@ mod tests {
         let raw = b"GET /foo?bar=1 HTTP/1.1\r\nHost: x.y\r\n\r\n";
         assert_eq!(extract_method(raw), Some("GET"));
         assert_eq!(extract_path(raw), Some("/foo"));
+    }
+
+    #[test]
+    fn test_is_websocket_upgrade() {
+        // Standard WebSocket upgrade request
+        let raw = b"GET /ws HTTP/1.1\r\nHost: abc.tunelo.net\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n";
+        assert!(is_websocket_upgrade(raw));
+
+        // Connection header with multiple values
+        let raw = b"GET /ws HTTP/1.1\r\nHost: abc.tunelo.net\r\nConnection: keep-alive, Upgrade\r\nUpgrade: websocket\r\n\r\n";
+        assert!(is_websocket_upgrade(raw));
+
+        // Case insensitive
+        let raw = b"GET /ws HTTP/1.1\r\nHost: abc.tunelo.net\r\nconnection: upgrade\r\nupgrade: WebSocket\r\n\r\n";
+        assert!(is_websocket_upgrade(raw));
+
+        // Normal HTTP request (no upgrade)
+        let raw = b"GET / HTTP/1.1\r\nHost: abc.tunelo.net\r\nAccept: */*\r\n\r\n";
+        assert!(!is_websocket_upgrade(raw));
+
+        // Missing Upgrade header
+        let raw = b"GET / HTTP/1.1\r\nHost: abc.tunelo.net\r\nConnection: Upgrade\r\n\r\n";
+        assert!(!is_websocket_upgrade(raw));
+
+        // Missing Connection: Upgrade
+        let raw = b"GET / HTTP/1.1\r\nHost: abc.tunelo.net\r\nUpgrade: websocket\r\n\r\n";
+        assert!(!is_websocket_upgrade(raw));
     }
 }

@@ -1,8 +1,10 @@
 pub mod codec;
 pub mod messages;
+pub mod ws_mux;
 
 pub use codec::{read_message, write_message};
 pub use messages::*;
+pub use ws_mux::{WsBidi, WsMux, WsStreamReader, WsStreamWriter};
 
 /// Protocol version — increment on breaking changes.
 pub const PROTOCOL_VERSION: u8 = 1;

@@ -24,10 +24,15 @@ $ tunelo serve .
 ```
 Browser → HTTPS → Relay → QUIC stream → Client → localhost:3000
                  (8 MB)                  (8 MB)
+
+Browser → HTTPS → Relay → WS mux stream → Client → localhost:3000
+                 (8 MB)    (fallback)      (8 MB)
 ```
 
-- **QUIC tunnel** (quinn + rustls) — multiplexed, encrypted, low-latency
-- **Zero-copy data plane** — `copy_bidirectional` between TCP and QUIC streams
+- **QUIC tunnel** (quinn + rustls) — multiplexed, encrypted, low-latency (default)
+- **WebSocket tunnel** (tokio-tungstenite) — TCP-based fallback when UDP is blocked, with stream multiplexing over a single WebSocket connection
+- **WebSocket passthrough** — browser WebSocket connections (e.g. Vite HMR, socket.io) are transparently relayed through the tunnel
+- **Zero-copy data plane** — `copy_bidirectional` between TCP and tunnel streams
 - **Built-in file server** — embedded React web explorer with viewers for code/markdown/PDF/images/video/audio/CSV/Excel
 - **Decoupled client + relay** — client defaults to `tunelo.net`, or self-host your own relay
 - **One binary** — `tunelo port`, `tunelo serve`, `tunelo relay` — client and server in one
@@ -75,8 +80,14 @@ tunelo serve . --local
 # Run your own relay on any VPS
 tunelo relay --domain yourdomain.com
 
+# Enable WebSocket tunnel endpoint (for clients behind UDP-blocking firewalls)
+tunelo relay --domain yourdomain.com --ws-tunnel-addr 0.0.0.0:4434
+
 # Point clients to your relay
 tunelo port 3000 --relay yourdomain.com:4433
+
+# Use WebSocket transport (when UDP/QUIC is blocked)
+tunelo port 3000 --transport ws --ws-relay ws://yourdomain.com:4434
 ```
 
 ## CLI
@@ -91,6 +102,10 @@ tunelo port <PORT> -- pnpm dev              # Run command and tunnel it
 tunelo port <PORT> -- next start            # Run Next.js and tunnel it
 tunelo port 5173 -- vite                    # Run Vite and tunnel it
 
+tunelo port <PORT> --transport ws            # Use WebSocket transport
+tunelo port <PORT> --transport ws \
+  --ws-relay ws://host:4434                  # Custom WS relay address
+
 tunelo serve .                              # Serve current directory
 tunelo serve ./dist                         # Serve a specific directory
 tunelo serve README.md                      # Serve a single file
@@ -102,6 +117,7 @@ tunelo relay                                # Start relay with defaults
 tunelo relay --domain tunelo.net            # Production domain
 tunelo relay --tunnel-addr 0.0.0.0:4433     # QUIC listener
 tunelo relay --http-addr 0.0.0.0:80         # HTTP listener
+tunelo relay --ws-tunnel-addr 0.0.0.0:4434  # WebSocket tunnel listener
 ```
 
 ## File Server
@@ -116,8 +132,8 @@ When you run `tunelo serve`, tunelo starts a built-in file server with:
 ## Docker
 
 ```bash
-docker run -d -p 8080:8080 -p 4433:4433/udp \
-  tunelo/tunelo relay --domain yourdomain.com
+docker run -d -p 8080:8080 -p 4433:4433/udp -p 4434:4434 \
+  tunelo/tunelo relay --domain yourdomain.com --ws-tunnel-addr 0.0.0.0:4434
 ```
 
 Or with docker-compose:

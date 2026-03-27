@@ -7,10 +7,23 @@
 //! Generates Docker/Heroku-style human-readable subdomain names
 //! like "swift-fox" or "calm-river" via the `names` crate.
 
+use std::sync::Arc;
+
 use dashmap::DashMap;
 use names::Generator;
 use quinn::Connection;
 use tracing::info;
+
+use tunelo_protocol::WsMux;
+
+/// Transport layer for a tunnel session.
+#[derive(Clone)]
+pub enum TunnelTransport {
+    /// QUIC connection (default).
+    Quic(Connection),
+    /// WebSocket multiplexed connection.
+    Ws(Arc<WsMux>),
+}
 
 /// An active tunnel session.
 #[derive(Clone)]
@@ -18,7 +31,7 @@ pub struct TunnelSession {
     pub subdomain: String,
     pub hostname: String,
     pub tunnel_id: String,
-    pub connection: Connection,
+    pub transport: TunnelTransport,
     /// Optional password for private tunnels.
     pub password: Option<String>,
 }

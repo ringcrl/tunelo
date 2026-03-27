@@ -1,4 +1,4 @@
-//! Tunnel connection management — QUIC connection to the relay.
+//! Tunnel connection management — QUIC and WebSocket connections to the relay.
 //!
 //! Auto-reconnects with exponential backoff on disconnect.
 
@@ -10,7 +10,7 @@ use tokio::time::sleep;
 use tracing::{error, info, info_span, warn, Instrument};
 
 use tunelo_protocol::{
-    read_message, write_message, ClientControl, RelayControl, PROTOCOL_VERSION,
+    read_message, write_message, ClientControl, RelayControl, WsMux, PROTOCOL_VERSION,
 };
 
 use crate::proxy;
@@ -18,7 +18,9 @@ use crate::proxy;
 const MAX_BACKOFF: Duration = Duration::from_secs(30);
 const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
 
-/// Establish tunnel and serve requests. Auto-reconnects on disconnect.
+// ─── QUIC tunnel (existing) ────────────────────────────────────────────────
+
+/// Establish QUIC tunnel and serve requests. Auto-reconnects on disconnect.
 pub async fn run_tunnel(
     port: u16,
     local_host: String,
@@ -30,9 +32,8 @@ pub async fn run_tunnel(
     let mut first = true;
 
     loop {
-        match run_once(&relay, &password, &local_addr, first).await {
+        match run_once_quic(&relay, &password, &local_addr, first).await {
             Ok(SessionEnd::Shutdown(reason)) => {
-                // Server explicitly told us to stop (e.g. session expired)
                 println!("\n  {reason}");
                 println!("  Tunnel closed.");
                 return Ok(());
@@ -45,10 +46,48 @@ pub async fn run_tunnel(
             }
             Err(e) => {
                 if first {
-                    // First connection failed — probably wrong address, bail
                     return Err(e);
                 }
                 warn!(error = %e, "connection failed, retrying in {}s", backoff.as_secs());
+                println!("  Connection failed. Retrying in {}s...", backoff.as_secs());
+                sleep(backoff).await;
+                backoff = (backoff * 2).min(MAX_BACKOFF);
+            }
+        }
+    }
+}
+
+// ─── WebSocket tunnel ──────────────────────────────────────────────────────
+
+/// Establish WebSocket tunnel and serve requests. Auto-reconnects on disconnect.
+pub async fn run_ws_tunnel(
+    port: u16,
+    local_host: String,
+    ws_relay: String,
+    password: Option<String>,
+) -> Result<()> {
+    let local_addr: Arc<str> = format!("{local_host}:{port}").into();
+    let mut backoff = INITIAL_BACKOFF;
+    let mut first = true;
+
+    loop {
+        match run_once_ws(&ws_relay, &password, &local_addr, first).await {
+            Ok(SessionEnd::Shutdown(reason)) => {
+                println!("\n  {reason}");
+                println!("  Tunnel closed.");
+                return Ok(());
+            }
+            Ok(SessionEnd::Disconnected) => {
+                println!("\n  Disconnected. Reconnecting in {}s...", backoff.as_secs());
+                sleep(backoff).await;
+                backoff = (backoff * 2).min(MAX_BACKOFF);
+                first = false;
+            }
+            Err(e) => {
+                if first {
+                    return Err(e);
+                }
+                warn!(error = %e, "WS connection failed, retrying in {}s", backoff.as_secs());
                 println!("  Connection failed. Retrying in {}s...", backoff.as_secs());
                 sleep(backoff).await;
                 backoff = (backoff * 2).min(MAX_BACKOFF);
@@ -62,15 +101,16 @@ enum SessionEnd {
     Disconnected,
 }
 
-/// Run a single tunnel session. Returns when disconnected or shut down.
-async fn run_once(
+// ─── QUIC session ──────────────────────────────────────────────────────────
+
+async fn run_once_quic(
     relay: &str,
     password: &Option<String>,
     local_addr: &Arc<str>,
     first: bool,
 ) -> Result<SessionEnd> {
-    let conn = connect(relay).await?;
-    info!(relay = %relay, "connected");
+    let conn = connect_quic(relay).await?;
+    info!(relay = %relay, "QUIC connected");
 
     // ── Handshake ──────────────────────────────────────────────────────
     let (mut tx, mut rx) = conn.open_bi().await?;
@@ -92,22 +132,7 @@ async fn run_once(
         _ => bail!("unexpected response"),
     };
 
-    // ── Print the URL ──────────────────────────────────────────────────
-    if first {
-        println!();
-        println!("  Tunnel is ready.");
-    } else {
-        println!("  Reconnected.");
-    }
-    println!();
-    if let Some(ref pw) = password {
-        println!("  Share URL:   https://{hostname}?pwd={pw}");
-        println!("  Private — visitors without the link will be asked for the password.");
-    } else {
-        println!("  Public URL:  https://{hostname}");
-    }
-    println!("  Forwarding:  http://{local_addr}");
-    println!();
+    print_url(first, &hostname, password, local_addr, "QUIC");
 
     // ── Data loop ──────────────────────────────────────────────────────
     let conn2 = conn.clone();
@@ -133,14 +158,107 @@ async fn run_once(
         }
     });
 
-    // ── Control loop with heartbeat timeout ─────────────────────────────
-    // Relay sends heartbeat every 30s. If we don't hear anything in 90s,
-    // the relay is gone (restarted, network issue, etc).
+    // ── Control loop ─────────────────────────────────────────────────
+    let result = control_loop(&mut tx, &mut rx).await;
+    data_handle.abort();
+    Ok(result)
+}
+
+// ─── WebSocket session ─────────────────────────────────────────────────────
+
+async fn run_once_ws(
+    ws_relay: &str,
+    password: &Option<String>,
+    local_addr: &Arc<str>,
+    first: bool,
+) -> Result<SessionEnd> {
+    let mux = connect_ws(ws_relay).await?;
+    let mux = Arc::new(mux);
+    info!(relay = %ws_relay, "WebSocket connected");
+
+    // ── Handshake via control stream (stream_id=0) ──────────────────
+    let (mut tx, mut rx) = mux.control_stream().await;
+    write_message(
+        &mut tx,
+        &ClientControl::Register {
+            version: PROTOCOL_VERSION,
+            password: password.clone(),
+        },
+    )
+    .await?;
+
+    let resp: RelayControl = read_message(&mut rx).await?;
+    let hostname = match resp {
+        RelayControl::Registered { hostname, .. } => hostname,
+        RelayControl::Error { code, message } => {
+            bail!("relay error ({code}): {message}");
+        }
+        _ => bail!("unexpected response"),
+    };
+
+    print_url(first, &hostname, password, local_addr, "WebSocket");
+
+    // ── Data loop — accept streams from the mux ─────────────────────
+    let mux2 = mux.clone();
+    let addr2 = local_addr.clone();
+    let data_handle = tokio::spawn(async move {
+        loop {
+            let (writer, reader) = match mux2.accept_bi().await {
+                Ok(s) => s,
+                Err(e) => {
+                    info!(error = %e, "WS data accept ended");
+                    return;
+                }
+            };
+            let addr = addr2.clone();
+            tokio::spawn(
+                async move {
+                    if let Err(e) = proxy::handle_ws_data_stream(writer, reader, &addr).await {
+                        warn!(error = %e, "WS stream error");
+                    }
+                }
+                .instrument(info_span!("ws_req")),
+            );
+        }
+    });
+
+    // ── Control loop ─────────────────────────────────────────────────
+    let result = control_loop(&mut tx, &mut rx).await;
+    data_handle.abort();
+    Ok(result)
+}
+
+// ─── Shared helpers ────────────────────────────────────────────────────────
+
+fn print_url(first: bool, hostname: &str, password: &Option<String>, local_addr: &str, transport: &str) {
+    if first {
+        println!();
+        println!("  Tunnel is ready. (transport: {transport})");
+    } else {
+        println!("  Reconnected. (transport: {transport})");
+    }
+    println!();
+    if let Some(ref pw) = password {
+        println!("  Share URL:   https://{hostname}?pwd={pw}");
+        println!("  Private — visitors without the link will be asked for the password.");
+    } else {
+        println!("  Public URL:  https://{hostname}");
+    }
+    println!("  Forwarding:  http://{local_addr}");
+    println!();
+}
+
+/// Shared control loop for both QUIC and WS transports.
+async fn control_loop<R, W>(tx: &mut W, rx: &mut R) -> SessionEnd
+where
+    R: tokio::io::AsyncRead + Unpin,
+    W: tokio::io::AsyncWrite + Unpin,
+{
     let heartbeat_timeout = Duration::from_secs(90);
-    let result = loop {
-        match tokio::time::timeout(heartbeat_timeout, read_message::<RelayControl, _>(&mut rx)).await {
+    loop {
+        match tokio::time::timeout(heartbeat_timeout, read_message::<RelayControl, _>(rx)).await {
             Ok(Ok(RelayControl::Heartbeat)) => {
-                let _ = write_message(&mut tx, &ClientControl::HeartbeatAck).await;
+                let _ = write_message(tx, &ClientControl::HeartbeatAck).await;
             }
             Ok(Ok(RelayControl::Shutdown { reason })) => {
                 break SessionEnd::Shutdown(reason);
@@ -159,14 +277,11 @@ async fn run_once(
                 break SessionEnd::Disconnected;
             }
         }
-    };
-
-    data_handle.abort();
-    Ok(result)
+    }
 }
 
 /// Connect to the relay via QUIC.
-async fn connect(relay: &str) -> Result<quinn::Connection> {
+async fn connect_quic(relay: &str) -> Result<quinn::Connection> {
     let mut crypto = rustls::ClientConfig::builder()
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(InsecureVerifier))
@@ -203,6 +318,22 @@ async fn connect(relay: &str) -> Result<quinn::Connection> {
         .connect(addr, "tunelo")?
         .await
         .context("QUIC connect")
+}
+
+/// Connect to the relay via WebSocket.
+async fn connect_ws(relay: &str) -> Result<WsMux> {
+    // Normalize URL: add ws:// if not present
+    let url = if relay.starts_with("ws://") || relay.starts_with("wss://") {
+        relay.to_string()
+    } else {
+        format!("ws://{relay}")
+    };
+
+    let (ws_stream, _response) = tokio_tungstenite::connect_async(&url)
+        .await
+        .context("WebSocket connect")?;
+
+    Ok(WsMux::new(ws_stream, false))
 }
 
 #[derive(Debug)]

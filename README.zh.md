@@ -24,10 +24,15 @@ $ tunelo serve .
 ```
 浏览器 → HTTPS → 中继服务器 → QUIC 流 → 客户端 → localhost:3000
                   (8 MB)                  (8 MB)
+
+浏览器 → HTTPS → 中继服务器 → WS 多路复用流 → 客户端 → localhost:3000
+                  (8 MB)      (备用传输)       (8 MB)
 ```
 
-- **QUIC 隧道** (quinn + rustls) —— 多路复用、加密、低延迟
-- **零拷贝数据面** —— 在 TCP 和 QUIC 流之间使用 `copy_bidirectional`
+- **QUIC 隧道** (quinn + rustls) —— 多路复用、加密、低延迟（默认）
+- **WebSocket 隧道** (tokio-tungstenite) —— 当 UDP 被封锁时的 TCP 备用传输，通过单个 WebSocket 连接实现流多路复用
+- **WebSocket 透传** —— 浏览器 WebSocket 连接（如 Vite HMR、socket.io）可透明地通过隧道转发
+- **零拷贝数据面** —— 在 TCP 和隧道流之间使用 `copy_bidirectional`
 - **内置文件服务器** —— 嵌入式 React Web 浏览器，支持代码/Markdown/PDF/图片/视频/音频/CSV/Excel 预览
 - **客户端与中继解耦** —— 客户端默认连接 `tunelo.net`，也可自建中继服务器
 - **单一二进制** —— `tunelo port`、`tunelo serve`、`tunelo relay` —— 客户端和服务端合为一体
@@ -75,8 +80,14 @@ tunelo serve . --local
 # 在任意 VPS 上运行自己的中继服务器
 tunelo relay --domain yourdomain.com
 
+# 启用 WebSocket 隧道端点（用于 UDP 被封锁的客户端）
+tunelo relay --domain yourdomain.com --ws-tunnel-addr 0.0.0.0:4434
+
 # 将客户端指向你的中继服务器
 tunelo port 3000 --relay yourdomain.com:4433
+
+# 使用 WebSocket 传输（当 UDP/QUIC 被封锁时）
+tunelo port 3000 --transport ws --ws-relay ws://yourdomain.com:4434
 ```
 
 ## 命令行
@@ -91,6 +102,10 @@ tunelo port <PORT> -- pnpm dev              # 运行命令并创建隧道
 tunelo port <PORT> -- next start            # 运行 Next.js 并创建隧道
 tunelo port 5173 -- vite                    # 运行 Vite 并创建隧道
 
+tunelo port <PORT> --transport ws            # 使用 WebSocket 传输
+tunelo port <PORT> --transport ws \
+  --ws-relay ws://host:4434                  # 自定义 WS 中继地址
+
 tunelo serve .                              # 提供当前目录
 tunelo serve ./dist                         # 提供指定目录
 tunelo serve README.md                      # 提供单个文件
@@ -102,6 +117,7 @@ tunelo relay                                # 使用默认配置启动中继
 tunelo relay --domain tunelo.net            # 生产环境域名
 tunelo relay --tunnel-addr 0.0.0.0:4433     # QUIC 监听地址
 tunelo relay --http-addr 0.0.0.0:80         # HTTP 监听地址
+tunelo relay --ws-tunnel-addr 0.0.0.0:4434  # WebSocket 隧道监听地址
 ```
 
 ## 文件服务器
@@ -116,8 +132,8 @@ tunelo relay --http-addr 0.0.0.0:80         # HTTP 监听地址
 ## Docker
 
 ```bash
-docker run -d -p 8080:8080 -p 4433:4433/udp \
-  tunelo/tunelo relay --domain yourdomain.com
+docker run -d -p 8080:8080 -p 4433:4433/udp -p 4434:4434 \
+  tunelo/tunelo relay --domain yourdomain.com --ws-tunnel-addr 0.0.0.0:4434
 ```
 
 或使用 docker-compose：

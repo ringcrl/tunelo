@@ -1,7 +1,7 @@
-//! Data-plane relay — bidirectional byte copy between QUIC and localhost.
+//! Data-plane relay — bidirectional byte copy between tunnel and localhost.
 //!
 //! ZERO parsing. Raw bytes in, raw bytes out.
-//! Same pattern as bore's copy_bidirectional, over QUIC streams.
+//! Supports both QUIC streams and WebSocket multiplexed streams.
 
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -11,7 +11,9 @@ use tokio::io::{self, AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
 use tracing::debug;
 
-/// Relay one data stream to localhost and back.
+use tunelo_protocol::{WsBidi, WsStreamReader, WsStreamWriter};
+
+/// Relay one QUIC data stream to localhost and back.
 pub async fn handle_data_stream(
     send: quinn::SendStream,
     recv: quinn::RecvStream,
@@ -27,6 +29,26 @@ pub async fn handle_data_stream(
     match io::copy_bidirectional(&mut local, &mut tunnel).await {
         Ok((up, down)) => debug!(up, down, "relay done"),
         Err(e) => debug!(error = %e, "relay ended"),
+    }
+    Ok(())
+}
+
+/// Relay one WebSocket multiplexed data stream to localhost and back.
+pub async fn handle_ws_data_stream(
+    writer: WsStreamWriter,
+    reader: WsStreamReader,
+    local_addr: &str,
+) -> Result<()> {
+    let mut local = TcpStream::connect(local_addr)
+        .await
+        .context("connect local")?;
+    local.set_nodelay(true)?;
+
+    let mut tunnel = WsBidi { writer, reader };
+
+    match io::copy_bidirectional(&mut local, &mut tunnel).await {
+        Ok((up, down)) => debug!(up, down, "WS relay done"),
+        Err(e) => debug!(error = %e, "WS relay ended"),
     }
     Ok(())
 }

@@ -38,6 +38,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # HTTP parsing
 httparse = "1"
 
+# WebSocket
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+
 # Misc
 uuid = { version = "1", features = ["v4", "serde"] }
 rand = "0.8"

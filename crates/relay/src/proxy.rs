@@ -1,11 +1,10 @@
-//! Data-plane relay — streams raw HTTP bytes through the QUIC tunnel.
+//! Data-plane relay — streams raw bytes through the tunnel.
 //!
 //! ZERO parsing on the data path. The relay already extracted the Host
 //! header before calling into this module. Everything here is a raw byte
-//! pipe: public TCP socket ↔ QUIC stream ↔ client ↔ localhost.
+//! pipe: public TCP socket ↔ tunnel stream ↔ client ↔ localhost.
 //!
-//! Inspired by bore's copy_bidirectional and rathole's zero-copy forwarding,
-//! but over multiplexed QUIC streams instead of per-request TCP connections.
+//! Supports both QUIC and WebSocket transport layers.
 
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -14,29 +13,37 @@ use anyhow::{Context as _, Result};
 use tokio::io::{self, AsyncRead, AsyncWrite, ReadBuf};
 use tracing::debug;
 
-use crate::router::TunnelSession;
+use tunelo_protocol::WsBidi;
+
+use crate::router::{TunnelSession, TunnelTransport};
 
 /// Relay a public TCP connection through the tunnel.
 ///
-/// Opens a QUIC bidi stream, then copy_bidirectional:
-///   browser ↔ QUIC stream ↔ client ↔ localhost
+/// Opens a bidi stream (QUIC or WS), then copy_bidirectional:
+///   browser ↔ tunnel stream ↔ client ↔ localhost
 pub async fn relay_connection(
     session: &TunnelSession,
     mut public_stream: tokio::net::TcpStream,
 ) -> Result<()> {
-    let (send, recv) = session
-        .connection
-        .open_bi()
-        .await
-        .context("open QUIC stream")?;
-
-    debug!(subdomain = %session.subdomain, "relaying");
-
-    let mut tunnel = QuicBidi { send, recv };
-
-    match io::copy_bidirectional(&mut public_stream, &mut tunnel).await {
-        Ok((up, down)) => debug!(up, down, "relay done"),
-        Err(e) => debug!(error = %e, "relay ended"),
+    match &session.transport {
+        TunnelTransport::Quic(conn) => {
+            let (send, recv) = conn.open_bi().await.context("open QUIC stream")?;
+            debug!(subdomain = %session.subdomain, "relaying (QUIC)");
+            let mut tunnel = QuicBidi { send, recv };
+            match io::copy_bidirectional(&mut public_stream, &mut tunnel).await {
+                Ok((up, down)) => debug!(up, down, "relay done"),
+                Err(e) => debug!(error = %e, "relay ended"),
+            }
+        }
+        TunnelTransport::Ws(mux) => {
+            let (writer, reader) = mux.open_bi().await.context("open WS stream")?;
+            debug!(subdomain = %session.subdomain, "relaying (WS)");
+            let mut tunnel = WsBidi { writer, reader };
+            match io::copy_bidirectional(&mut public_stream, &mut tunnel).await {
+                Ok((up, down)) => debug!(up, down, "relay done"),
+                Err(e) => debug!(error = %e, "relay ended"),
+            }
+        }
     }
     Ok(())
 }
@@ -54,7 +61,6 @@ impl AsyncRead for QuicBidi {
         cx: &mut Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
-        // quinn::RecvStream implements tokio::io::AsyncRead
         Pin::new(&mut self.get_mut().recv).poll_read(cx, buf)
     }
 }
@@ -66,7 +72,6 @@ impl AsyncWrite for QuicBidi {
         cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<io::Result<usize>> {
-        // quinn::SendStream implements tokio::io::AsyncWrite (returns io::Error)
         <quinn::SendStream as AsyncWrite>::poll_write(
             Pin::new(&mut self.get_mut().send),
             cx,

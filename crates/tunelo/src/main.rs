@@ -6,6 +6,7 @@
 //!   tunelo relay                     start the relay server
 
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::process::Stdio;
 use std::time::Duration;
 
@@ -53,6 +54,15 @@ enum Command {
         #[clap(long, num_args = 0..=1, default_missing_value = "__auto__")]
         password: Option<String>,
 
+        /// Transport protocol: "quic" (default) or "ws" (WebSocket fallback).
+        #[clap(long, default_value = "quic")]
+        transport: String,
+
+        /// WebSocket relay address (used when --transport ws).
+        /// Example: ws://relay.example.com:4434
+        #[clap(long, env = "TUNELO_WS_RELAY")]
+        ws_relay: Option<String>,
+
         /// Command to run (everything after --).
         #[clap(last = true)]
         command: Vec<String>,
@@ -80,6 +90,14 @@ enum Command {
         /// Use without a value to auto-generate one, or specify your own.
         #[clap(long, num_args = 0..=1, default_missing_value = "__auto__")]
         password: Option<String>,
+
+        /// Transport protocol: "quic" (default) or "ws" (WebSocket fallback).
+        #[clap(long, default_value = "quic")]
+        transport: String,
+
+        /// WebSocket relay address (used when --transport ws).
+        #[clap(long, env = "TUNELO_WS_RELAY")]
+        ws_relay: Option<String>,
     },
 
     /// Start the relay server.
@@ -99,6 +117,11 @@ enum Command {
         /// Maximum tunnel session duration in seconds (0 = no limit).
         #[clap(long, default_value = "7200")]
         max_session: u64,
+
+        /// WebSocket tunnel listener address (e.g., "0.0.0.0:4434").
+        /// Enables WebSocket transport for clients behind UDP-blocking firewalls.
+        #[clap(long)]
+        ws_tunnel_addr: Option<String>,
     },
 }
 
@@ -115,19 +138,22 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Command::Port {
-            port, relay, local_host, password, command,
+            port, relay, local_host, password, transport, ws_relay, command,
         } => {
             let password = resolve_password(password);
 
             if !command.is_empty() {
-                run_with_command(port, &local_host, relay, password, command).await
+                run_with_command(port, &local_host, relay, password, transport, ws_relay, command).await
+            } else if transport == "ws" {
+                let ws_addr = ws_relay.unwrap_or_else(|| relay.clone());
+                tunnel::run_ws_tunnel(port, local_host, ws_addr, password).await
             } else {
                 tunnel::run_tunnel(port, local_host, relay, password).await
             }
         }
 
         Command::Serve {
-            path, local, port, relay, password,
+            path, local, port, relay, password, transport, ws_relay,
         } => {
             if !path.exists() {
                 bail!("Path '{}' does not exist", path.display());
@@ -151,14 +177,19 @@ async fn main() -> Result<()> {
                 let display = path.canonicalize().unwrap_or(path.clone());
                 let port = fileserver::start_background(path).await?;
                 println!("  Serving {} on :{port}", display.display());
-                tunnel::run_tunnel(port, "127.0.0.1".into(), relay, password).await
+                if transport == "ws" {
+                    let ws_addr = ws_relay.unwrap_or_else(|| relay.clone());
+                    tunnel::run_ws_tunnel(port, "127.0.0.1".into(), ws_addr, password).await
+                } else {
+                    tunnel::run_tunnel(port, "127.0.0.1".into(), relay, password).await
+                }
             }
         }
 
         Command::Relay {
-            domain, tunnel_addr, http_addr, max_session,
+            domain, tunnel_addr, http_addr, max_session, ws_tunnel_addr,
         } => {
-            tunelo_relay::run(domain, tunnel_addr, http_addr, max_session).await
+            tunelo_relay::run(domain, tunnel_addr, http_addr, max_session, ws_tunnel_addr).await
         }
     }
 }
@@ -169,6 +200,8 @@ async fn run_with_command(
     local_host: &str,
     relay: String,
     password: Option<String>,
+    transport: String,
+    ws_relay: Option<String>,
     command: Vec<String>,
 ) -> Result<()> {
     let cmd_display = command.join(" ");
@@ -193,22 +226,31 @@ async fn run_with_command(
     if wait_result.is_err() {
         // Check if child already exited
         if let Ok(Some(status)) = child.try_wait() {
-            bail!("Command '{}' exited with {} before port {port} was ready", cmd_display, status);
+            bail!("Command '{cmd_display}' exited with {status} before port {port} was ready");
         }
-        bail!("Timeout waiting for port {port} — command '{}' may not be listening", cmd_display);
+        bail!("Timeout waiting for port {port} — command '{cmd_display}' may not be listening");
     }
 
     println!("  Port {port} is ready.");
     println!();
 
     // Run tunnel and child concurrently; exit when either stops
+    let tunnel_future = if transport == "ws" {
+        let ws_addr = ws_relay.unwrap_or_else(|| relay.clone());
+        Box::pin(tunnel::run_ws_tunnel(port, host, ws_addr, password))
+            as Pin<Box<dyn std::future::Future<Output = Result<()>>>>
+    } else {
+        Box::pin(tunnel::run_tunnel(port, host, relay, password))
+            as Pin<Box<dyn std::future::Future<Output = Result<()>>>>
+    };
+
     tokio::select! {
         status = child.wait() => {
             let status: std::process::ExitStatus = status?;
             println!("\n  Command exited with {status}");
             std::process::exit(status.code().unwrap_or(1));
         }
-        result = tunnel::run_tunnel(port, host, relay, password) => {
+        result = tunnel_future => {
             // Tunnel ended (error or shutdown) — kill the child
             let _ = child.kill().await;
             result
