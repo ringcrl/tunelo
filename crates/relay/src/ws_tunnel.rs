@@ -1,4 +1,4 @@
-//! WebSocket tunnel listener — accepts WS connections from tunelo clients.
+//! WebSocket tunnel listener — accepts WS connections from tunneleo clients.
 //!
 //! Mirrors the QUIC tunnel listener (`tunnel.rs`) but over WebSocket transport.
 //! The same registration/heartbeat/data flow is used, multiplexed over `WsMux`.
@@ -10,7 +10,7 @@ use tokio::net::TcpListener;
 use tokio::time::{interval, Duration, Instant};
 use tracing::{info, info_span, warn, Instrument};
 
-use tunelo_protocol::{
+use tunneleo_protocol::{
     read_message, write_message, ClientControl, RelayControl, WsMux, PROTOCOL_VERSION,
 };
 
@@ -84,7 +84,7 @@ async fn handle_ws_connection(
     if version != PROTOCOL_VERSION {
         send_error(
             &mut tx,
-            tunelo_protocol::error_codes::VERSION_MISMATCH,
+            tunneleo_protocol::error_codes::VERSION_MISMATCH,
             &format!("version mismatch: server={PROTOCOL_VERSION}, client={version}"),
         )
         .await;
@@ -170,7 +170,7 @@ fn format_duration(secs: u64) -> String {
     }
 }
 
-async fn send_error(tx: &mut tunelo_protocol::WsStreamWriter, code: u16, msg: &str) {
+async fn send_error(tx: &mut tunneleo_protocol::WsStreamWriter, code: u16, msg: &str) {
     let _ = write_message(
         tx,
         &RelayControl::Error {

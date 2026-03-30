@@ -56,7 +56,7 @@ export function TableOfContents({ items }: { items: Array<{ label: string; href:
           onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-hover)' }}
           onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-primary)' }}
         >
-          tunelo
+          tunneleo
         </a>
         {items.map((item) => {
           const isActive = `#${activeId}` === item.href
@@ -122,11 +122,11 @@ function TopHeader() {
         onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-hover)' }}
         onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-primary)' }}
       >
-        tunelo
+        tunneleo
       </a>
       <div className="flex items-center gap-1">
         <a
-          href="https://github.com/jiweiyuan/tunelo"
+          href="https://github.com/jiweiyuan/tunneleo"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1.5 no-underline"

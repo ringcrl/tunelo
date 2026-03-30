@@ -27,45 +27,45 @@ export function ContentEn() {
   return (
     <>
       <P>
-        Expose anything to the internet — local ports, files, directories. One command, instant HTTPS tunnel. Built in <strong>Rust</strong> — single binary, 8 MB memory, zero-copy data plane. <A href="https://github.com/jiweiyuan/tunelo">Star on GitHub</A>.
+        Expose anything to the internet — local ports, files, directories. One command, instant HTTPS tunnel. Built in <strong>Rust</strong> — single binary, 8 MB memory, zero-copy data plane. <A href="https://github.com/jiweiyuan/tunneleo">Star on GitHub</A>.
       </P>
 
-      <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunelo port 3000
+      <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunneleo port 3000
   Tunnel is ready.
 
-  Public URL:  https://swift-fox-3847.tunelo.net
+  Public URL:  https://swift-fox-3847.agent-tunnel.woa.com
   Forwarding:  http://localhost:3000`}</CodeBlock>
 
-      <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunelo serve .
+      <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunneleo serve .
   Serving /Users/you/project on :51234
   Tunnel is ready.
 
-  Public URL:  https://calm-river-9012.tunelo.net
+  Public URL:  https://calm-river-9012.agent-tunnel.woa.com
   Forwarding:  http://127.0.0.1:51234`}</CodeBlock>
 
       <P>
-        Other tunnel tools need config files, accounts, or dashboards. Tunelo is a <strong>single binary</strong> that does two things: expose a local port, or serve files with a built-in web explorer. QUIC transport gives you multiplexed, encrypted, low-latency tunneling. By default, the client connects to the public relay at <Code>tunelo.net</Code> — or point it at your own with <Code>--relay</Code>.
+        Other tunnel tools need config files, accounts, or dashboards. Tunneleo is a <strong>single binary</strong> that does two things: expose a local port, or serve files with a built-in web explorer. QUIC transport gives you multiplexed, encrypted, low-latency tunneling. By default, the client connects to the public relay at <Code>agent-tunnel.woa.com</Code> — or point it at your own with <Code>--relay</Code>.
       </P>
 
       <Section id="install" title="Install">
         <P><strong>macOS / Linux:</strong></P>
-        <CodeBlock lang="bash" showLineNumbers={false}>{`curl -fsSL https://tunelo.net/install.sh | sh`}</CodeBlock>
+        <CodeBlock lang="bash" showLineNumbers={false}>{`curl -fsSL https://agent-tunnel.woa.com/install.sh | sh`}</CodeBlock>
 
         <P><strong>Windows (PowerShell):</strong></P>
-        <CodeBlock lang="bash" showLineNumbers={false}>{`irm https://tunelo.net/install.ps1 | iex`}</CodeBlock>
+        <CodeBlock lang="bash" showLineNumbers={false}>{`irm https://agent-tunnel.woa.com/install.ps1 | iex`}</CodeBlock>
 
         <P>Supported platforms:</P>
         <ComparisonTable
           headers={['OS', 'Architecture', 'Binary']}
           rows={[
-            ['Linux', 'x86_64 / arm64', 'tunelo-linux-amd64 / arm64'],
-            ['macOS', 'x86_64 / arm64', 'tunelo-macos-amd64 / arm64'],
-            ['Windows', 'x86_64', 'tunelo-windows-amd64.exe'],
+            ['Linux', 'x86_64 / arm64', 'tunneleo-linux-amd64 / arm64'],
+            ['macOS', 'x86_64 / arm64', 'tunneleo-macos-amd64 / arm64'],
+            ['Windows', 'x86_64', 'tunneleo-windows-amd64.exe'],
           ]}
         />
 
         <P>
-          Or download directly from <A href="https://github.com/jiweiyuan/tunelo/releases">GitHub Releases</A>.
+          Or download directly from <A href="https://github.com/jiweiyuan/tunneleo/releases">GitHub Releases</A>.
         </P>
       </Section>
 
@@ -78,45 +78,45 @@ export function ContentEn() {
         <CodeBlock lang="bash">{`python3 -m http.server 3000`}</CodeBlock>
 
         <P>2. Expose it:</P>
-        <CodeBlock lang="bash">{`tunelo port 3000`}</CodeBlock>
+        <CodeBlock lang="bash">{`tunneleo port 3000`}</CodeBlock>
 
         <P>
-          That's it — no flags needed. The client connects to the public relay at <Code>tunelo.net</Code> by default, assigns you a public URL like <Code>https://swift-fox-3847.tunelo.net</Code>, and starts relaying traffic to your localhost through an encrypted QUIC tunnel.
+          That's it — no flags needed. The client connects to the public relay at <Code>agent-tunnel.woa.com</Code> by default, assigns you a public URL like <Code>https://swift-fox-3847.agent-tunnel.woa.com</Code>, and starts relaying traffic to your localhost through an encrypted QUIC tunnel.
         </P>
 
         <P>Or run a command and tunnel it in one step:</P>
-        <CodeBlock lang="bash">{`tunelo port 3000 -- pnpm dev`}</CodeBlock>
+        <CodeBlock lang="bash">{`tunneleo port 3000 -- pnpm dev`}</CodeBlock>
 
         <P>
-          Tunelo spawns <Code>pnpm dev</Code>, waits for port 3000 to be ready, then creates the tunnel. When either stops, the other is cleaned up.
+          Tunneleo spawns <Code>pnpm dev</Code>, waits for port 3000 to be ready, then creates the tunnel. When either stops, the other is cleaned up.
         </P>
 
-        <P>Install the <strong>skill</strong> to teach your AI coding agent how to use tunelo:</P>
-        <CodeBlock lang="bash" showLineNumbers={false}>{`npx -y skills add tunelo/tunelo`}</CodeBlock>
+        <P>Install the <strong>skill</strong> to teach your AI coding agent how to use tunneleo:</P>
+        <CodeBlock lang="bash" showLineNumbers={false}>{`npx -y skills add tunneleo/tunneleo`}</CodeBlock>
 
         <Caption>The skill teaches your agent the CLI, when to use tunnels, and handles setup automatically.</Caption>
       </Section>
 
       <Section id="file-server" title="File server">
         <P>
-          Run <Code>tunelo serve .</Code> or <Code>tunelo serve ./dist</Code> and tunelo starts a <strong>built-in file server</strong> with a React web explorer — embedded directly in the binary. Browse directories, preview files, share them through a public URL. No nginx, no Python server, no external dependencies.
+          Run <Code>tunneleo serve .</Code> or <Code>tunneleo serve ./dist</Code> and tunneleo starts a <strong>built-in file server</strong> with a React web explorer — embedded directly in the binary. Browse directories, preview files, share them through a public URL. No nginx, no Python server, no external dependencies.
         </P>
 
         <CodeBlock lang="bash">{`# Serve current directory through a tunnel
-tunelo serve .
+tunneleo serve .
 
 # Serve a specific directory
-tunelo serve ./dist
+tunneleo serve ./dist
 
 # Serve a single file
-tunelo serve README.md
-tunelo serve index.html
+tunneleo serve README.md
+tunneleo serve index.html
 
 # Local-only preview (no tunnel)
-tunelo serve . --local
+tunneleo serve . --local
 
 # Local preview on a specific port
-tunelo serve . -l -p 8000`}</CodeBlock>
+tunneleo serve . -l -p 8000`}</CodeBlock>
 
         <P>The web explorer supports:</P>
         <List>
@@ -145,7 +145,7 @@ tunelo serve . -l -p 8000`}</CodeBlock>
                  (8 MB)                  (8 MB)
 
 ┌──────────┐   ┌────────────────┐   ┌───────────────┐   ┌───────────┐
-│  Browser  │──▶│  tunelo relay  │◀──│ tunelo client  │──▶│ localhost │
+│  Browser  │──▶│  tunneleo relay  │◀──│ tunneleo client  │──▶│ localhost │
 │           │   │  TLS + routing │   │  QUIC tunnel   │   │   :3000   │
 └──────────┘   └────────────────┘   └───────────────┘   └───────────┘
   Internet         Your VPS           Your machine         Your app`}</CodeBlock>
@@ -161,55 +161,55 @@ tunelo serve . -l -p 8000`}</CodeBlock>
 
       <Section id="cli-reference" title="CLI reference">
         <P>
-          The client and relay are <strong>fully decoupled</strong>. The client defaults to the public relay at <Code>tunelo.net:4433</Code> — or use <Code>--relay</Code> to point at your own. No account, no signup.
+          The client and relay are <strong>fully decoupled</strong>. The client defaults to the public relay at <Code>agent-tunnel.woa.com:4433</Code> — or use <Code>--relay</Code> to point at your own. No account, no signup.
         </P>
 
         <CodeBlock lang="bash">{`# Port mode — expose a local port
-tunelo port 3000
-tunelo port 3000 --relay my.server:4433
-tunelo port 3000 -H 192.168.1.100
-tunelo port 3000 --password
-tunelo port 3000 --password mysecret
+tunneleo port 3000
+tunneleo port 3000 --relay my.server:4433
+tunneleo port 3000 -H 192.168.1.100
+tunneleo port 3000 --password
+tunneleo port 3000 --password mysecret
 
 # Run a command and tunnel it
-tunelo port 3000 -- pnpm dev
-tunelo port 3000 -- next start
-tunelo port 5173 -- vite
+tunneleo port 3000 -- pnpm dev
+tunneleo port 3000 -- next start
+tunneleo port 5173 -- vite
 
 # File mode — serve files or directories
-tunelo serve .
-tunelo serve ./dist
-tunelo serve README.md
-tunelo serve . --local
-tunelo serve . -l -p 8000`}</CodeBlock>
+tunneleo serve .
+tunneleo serve ./dist
+tunneleo serve README.md
+tunneleo serve . --local
+tunneleo serve . -l -p 8000`}</CodeBlock>
 
         <P>Relay configuration:</P>
 
         <CodeBlock lang="bash">{`# Start with defaults
-tunelo relay
+tunneleo relay
 
 # Production deployment
-tunelo relay --domain tunelo.net
+tunneleo relay --domain agent-tunnel.woa.com
 
 # Custom addresses
-tunelo relay --tunnel-addr 0.0.0.0:4433 --http-addr 0.0.0.0:80`}</CodeBlock>
+tunneleo relay --tunnel-addr 0.0.0.0:4433 --http-addr 0.0.0.0:80`}</CodeBlock>
 
         <Caption>Client: one binary, one command. Relay: three flags.</Caption>
       </Section>
 
       <Section id="self-hosting" title="Self-hosting">
         <P>
-          Don't want to use the public relay? Run your own on any VPS. The client and relay are the same binary — just point <Code>--relay</Code> at your server. The <A href="https://github.com/jiweiyuan/tunelo/tree/main/deploy">deploy/</A> directory has everything: systemd service, nginx config, Let's Encrypt with Cloudflare DNS.
+          Don't want to use the public relay? Run your own on any VPS. The client and relay are the same binary — just point <Code>--relay</Code> at your server. The <A href="https://github.com/jiweiyuan/tunneleo/tree/main/deploy">deploy/</A> directory has everything: systemd service, nginx config, Let's Encrypt with Cloudflare DNS.
         </P>
 
         <CodeBlock lang="bash">{`# Build the relay
-cargo build --release --bin tunelo
+cargo build --release --bin tunneleo
 
 # Run it
-./target/release/tunelo relay --domain yourdomain.com
+./target/release/tunneleo relay --domain yourdomain.com
 
 # Point your clients to it
-tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
+tunneleo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
 
         <P>You need:</P>
         <List>
@@ -244,21 +244,21 @@ tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
 
       <Section id="ai-skill" title="AI skill">
         <P>
-          Tunelo ships with a <strong>SKILL.md</strong> that teaches any AI coding agent how to create tunnels. One command to install it:
+          Tunneleo ships with a <strong>SKILL.md</strong> that teaches any AI coding agent how to create tunnels. One command to install it:
         </P>
 
-        <CodeBlock lang="bash" showLineNumbers={false}>{`npx -y skills add tunelo/tunelo`}</CodeBlock>
+        <CodeBlock lang="bash" showLineNumbers={false}>{`npx -y skills add tunneleo/tunneleo`}</CodeBlock>
 
         <P>
-          The skill tells your agent what tunelo does, when to use it, and all the CLI flags. After installing, your agent can run <Code>tunelo port 3000</Code> when you ask it to "share this locally" or "expose my dev server."
+          The skill tells your agent what tunneleo does, when to use it, and all the CLI flags. After installing, your agent can run <Code>tunneleo port 3000</Code> when you ask it to "share this locally" or "expose my dev server."
         </P>
 
         <P>What the skill teaches:</P>
         <List>
-          <Li>Expose ports with <Code>tunelo port &lt;port&gt;</Code></Li>
-          <Li>Run commands and tunnel them with <Code>tunelo port 3000 -- pnpm dev</Code></Li>
+          <Li>Expose ports with <Code>tunneleo port &lt;port&gt;</Code></Li>
+          <Li>Run commands and tunnel them with <Code>tunneleo port 3000 -- pnpm dev</Code></Li>
           <Li>Password protection with <Code>--password</Code></Li>
-          <Li>Serve files with <Code>tunelo serve .</Code></Li>
+          <Li>Serve files with <Code>tunneleo serve .</Code></Li>
         </List>
 
         <Caption>Follows the same skill format as <A href="https://github.com/runbrowser/runbrowser">RunBrowser</A>.</Caption>
@@ -266,12 +266,12 @@ tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
 
       <Section id="comparison" title="Comparison">
         <P>
-          Why use tunelo over the alternatives.
+          Why use tunneleo over the alternatives.
         </P>
 
         <ComparisonTable
           title="vs ngrok"
-          headers={['', 'ngrok', 'tunelo']}
+          headers={['', 'ngrok', 'tunneleo']}
           rows={[
             ['Price', 'Free tier limited', 'Free & open source'],
             ['Account required', 'Yes', 'No'],
@@ -284,19 +284,19 @@ tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
 
         <ComparisonTable
           title="vs bore"
-          headers={['', 'bore', 'tunelo']}
+          headers={['', 'bore', 'tunneleo']}
           rows={[
             ['Routing', 'By TCP port', 'By subdomain (hostname)'],
             ['Transport', 'TCP', 'QUIC (multiplexed)'],
             ['TLS', 'No built-in', 'TLS at relay'],
-            ['Public URL', 'bore.pub:PORT', 'subdomain.tunelo.net'],
+            ['Public URL', 'bore.pub:PORT', 'subdomain.agent-tunnel.woa.com'],
             ['HTTP-aware', 'No', 'Yes (Host header routing)'],
           ]}
         />
 
         <ComparisonTable
           title="vs Cloudflare Tunnel"
-          headers={['', 'cloudflared', 'tunelo']}
+          headers={['', 'cloudflared', 'tunneleo']}
           rows={[
             ['Self-hostable', 'No', 'Yes'],
             ['Vendor lock-in', 'Cloudflare only', 'Any VPS'],
@@ -322,7 +322,7 @@ tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
       </Section>
 
       <P>
-        MIT License · <A href="https://github.com/jiweiyuan/tunelo">GitHub</A>
+        MIT License · <A href="https://github.com/jiweiyuan/tunneleo">GitHub</A>
       </P>
     </>
   )

@@ -7,9 +7,9 @@
 //!
 //! Private tunnel auth flow:
 //!   1. URL with `?pwd=<password>` → validate → Set-Cookie → redirect to clean URL
-//!   2. Cookie `__tunelo_password` → validate → relay
+//!   2. Cookie `__tunneleo_password` → validate → relay
 //!   3. No auth → serve a password input page
-//!   4. POST /__tunelo_verify → validate form body → Set-Cookie → redirect
+//!   4. POST /__tunneleo_verify → validate form body → Set-Cookie → redirect
 
 use std::sync::Arc;
 
@@ -97,7 +97,7 @@ async fn handle_connection(mut stream: TcpStream, router: &Router) -> Result<()>
     // ── Private tunnel: check auth ────────────────────────────────────
 
     // 1. Cookie — subsequent visits (most common, check first)
-    if let Some(ref c) = extract_cookie(raw, "__tunelo_password") {
+    if let Some(ref c) = extract_cookie(raw, "__tunneleo_password") {
         if constant_time_eq(c.as_bytes(), expected.as_bytes()) {
             debug!(subdomain = %subdomain, is_ws, "routing (cookie auth)");
             if let Err(e) = proxy::relay_connection(&session, stream).await {
@@ -126,10 +126,10 @@ async fn handle_connection(mut stream: TcpStream, router: &Router) -> Result<()>
         }
     }
 
-    // 3. POST /__tunelo_verify — form submission from password page
+    // 3. POST /__tunneleo_verify — form submission from password page
     let method = extract_method(raw);
     let path = extract_path(raw);
-    if method == Some("POST") && path == Some("/__tunelo_verify") {
+    if method == Some("POST") && path == Some("/__tunneleo_verify") {
         let body = consume_and_read_body(&mut stream).await;
         if let Some(pw) = extract_form_field(&body, "password") {
             if constant_time_eq(pw.as_bytes(), expected.as_bytes()) {
@@ -199,7 +199,7 @@ async fn send_auth_page(stream: &mut TcpStream, show_error: bool) {
   <h1>Password Required</h1>
   <p class="sub">This tunnel is protected. Enter the password to continue.</p>
   {error_html}
-  <form method="POST" action="/__tunelo_verify">
+  <form method="POST" action="/__tunneleo_verify">
     <input type="password" name="password" placeholder="Password" autofocus autocomplete="off" required>
     <button type="submit">Continue</button>
   </form>
@@ -224,7 +224,7 @@ async fn send_auth_redirect(stream: &mut TcpStream, password: &str) {
     let resp = format!(
         "HTTP/1.1 302 Found\r\n\
          Location: /\r\n\
-         Set-Cookie: __tunelo_password={password}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400\r\n\
+         Set-Cookie: __tunneleo_password={password}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400\r\n\
          Content-Length: 0\r\n\
          Connection: close\r\n\r\n"
     );
@@ -420,19 +420,19 @@ mod tests {
 
     #[test]
     fn test_extract_host() {
-        let raw = b"GET /path HTTP/1.1\r\nHost: abc.tunelo.net\r\nAccept: */*\r\n\r\n";
-        assert_eq!(extract_host(raw).unwrap(), "abc.tunelo.net");
+        let raw = b"GET /path HTTP/1.1\r\nHost: abc.agent-tunnel.woa.com\r\nAccept: */*\r\n\r\n";
+        assert_eq!(extract_host(raw).unwrap(), "abc.agent-tunnel.woa.com");
     }
 
     #[test]
     fn test_extract_host_with_port() {
-        let raw = b"GET / HTTP/1.1\r\nHost: abc.tunelo.net:8080\r\n\r\n";
-        assert_eq!(extract_host(raw).unwrap(), "abc.tunelo.net");
+        let raw = b"GET / HTTP/1.1\r\nHost: abc.agent-tunnel.woa.com:8080\r\n\r\n";
+        assert_eq!(extract_host(raw).unwrap(), "abc.agent-tunnel.woa.com");
     }
 
     #[test]
     fn test_extract_subdomain() {
-        assert_eq!(extract_subdomain("abc.tunelo.net"), Some("abc".into()));
+        assert_eq!(extract_subdomain("abc.agent-tunnel.woa.com"), Some("abc".into()));
         assert_eq!(extract_subdomain("myapp.localhost"), Some("myapp".into()));
         assert_eq!(extract_subdomain("localhost"), None);
         assert_eq!(extract_subdomain(".bad"), None);
@@ -440,7 +440,7 @@ mod tests {
 
     #[test]
     fn test_extract_query_param() {
-        let raw = b"GET /?pwd=hello123&foo=bar HTTP/1.1\r\nHost: x.tunelo.net\r\n\r\n";
+        let raw = b"GET /?pwd=hello123&foo=bar HTTP/1.1\r\nHost: x.agent-tunnel.woa.com\r\n\r\n";
         assert_eq!(extract_query_param(raw, "pwd"), Some("hello123".into()));
         assert_eq!(extract_query_param(raw, "foo"), Some("bar".into()));
         assert_eq!(extract_query_param(raw, "nope"), None);
@@ -448,8 +448,8 @@ mod tests {
 
     #[test]
     fn test_extract_cookie() {
-        let raw = b"GET / HTTP/1.1\r\nHost: x.y\r\nCookie: foo=bar; __tunelo_password=secret123\r\n\r\n";
-        assert_eq!(extract_cookie(raw, "__tunelo_password"), Some("secret123".into()));
+        let raw = b"GET / HTTP/1.1\r\nHost: x.y\r\nCookie: foo=bar; __tunneleo_password=secret123\r\n\r\n";
+        assert_eq!(extract_cookie(raw, "__tunneleo_password"), Some("secret123".into()));
         assert_eq!(extract_cookie(raw, "foo"), Some("bar".into()));
         assert_eq!(extract_cookie(raw, "nope"), None);
     }
@@ -464,9 +464,9 @@ mod tests {
 
     #[test]
     fn test_extract_method_and_path() {
-        let raw = b"POST /__tunelo_verify HTTP/1.1\r\nHost: x.y\r\n\r\npassword=abc";
+        let raw = b"POST /__tunneleo_verify HTTP/1.1\r\nHost: x.y\r\n\r\npassword=abc";
         assert_eq!(extract_method(raw), Some("POST"));
-        assert_eq!(extract_path(raw), Some("/__tunelo_verify"));
+        assert_eq!(extract_path(raw), Some("/__tunneleo_verify"));
 
         let raw = b"GET /foo?bar=1 HTTP/1.1\r\nHost: x.y\r\n\r\n";
         assert_eq!(extract_method(raw), Some("GET"));
@@ -476,27 +476,27 @@ mod tests {
     #[test]
     fn test_is_websocket_upgrade() {
         // Standard WebSocket upgrade request
-        let raw = b"GET /ws HTTP/1.1\r\nHost: abc.tunelo.net\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n";
+        let raw = b"GET /ws HTTP/1.1\r\nHost: abc.agent-tunnel.woa.com\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n";
         assert!(is_websocket_upgrade(raw));
 
         // Connection header with multiple values
-        let raw = b"GET /ws HTTP/1.1\r\nHost: abc.tunelo.net\r\nConnection: keep-alive, Upgrade\r\nUpgrade: websocket\r\n\r\n";
+        let raw = b"GET /ws HTTP/1.1\r\nHost: abc.agent-tunnel.woa.com\r\nConnection: keep-alive, Upgrade\r\nUpgrade: websocket\r\n\r\n";
         assert!(is_websocket_upgrade(raw));
 
         // Case insensitive
-        let raw = b"GET /ws HTTP/1.1\r\nHost: abc.tunelo.net\r\nconnection: upgrade\r\nupgrade: WebSocket\r\n\r\n";
+        let raw = b"GET /ws HTTP/1.1\r\nHost: abc.agent-tunnel.woa.com\r\nconnection: upgrade\r\nupgrade: WebSocket\r\n\r\n";
         assert!(is_websocket_upgrade(raw));
 
         // Normal HTTP request (no upgrade)
-        let raw = b"GET / HTTP/1.1\r\nHost: abc.tunelo.net\r\nAccept: */*\r\n\r\n";
+        let raw = b"GET / HTTP/1.1\r\nHost: abc.agent-tunnel.woa.com\r\nAccept: */*\r\n\r\n";
         assert!(!is_websocket_upgrade(raw));
 
         // Missing Upgrade header
-        let raw = b"GET / HTTP/1.1\r\nHost: abc.tunelo.net\r\nConnection: Upgrade\r\n\r\n";
+        let raw = b"GET / HTTP/1.1\r\nHost: abc.agent-tunnel.woa.com\r\nConnection: Upgrade\r\n\r\n";
         assert!(!is_websocket_upgrade(raw));
 
         // Missing Connection: Upgrade
-        let raw = b"GET / HTTP/1.1\r\nHost: abc.tunelo.net\r\nUpgrade: websocket\r\n\r\n";
+        let raw = b"GET / HTTP/1.1\r\nHost: abc.agent-tunnel.woa.com\r\nUpgrade: websocket\r\n\r\n";
         assert!(!is_websocket_upgrade(raw));
     }
 }

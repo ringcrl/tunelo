@@ -1,9 +1,9 @@
-//! Tunelo — expose anything to the internet.
+//! Tunneleo — expose anything to the internet.
 //!
-//!   tunelo port 3000                 expose local port
-//!   tunelo port 3000 -- pnpm dev     run command and tunnel it
-//!   tunelo serve .                   serve files with web explorer
-//!   tunelo relay                     start the relay server
+//!   tunneleo port 3000                 expose local port
+//!   tunneleo port 3000 -- pnpm dev     run command and tunnel it
+//!   tunneleo serve .                   serve files with web explorer
+//!   tunneleo relay                     start the relay server
 
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -21,7 +21,7 @@ mod tunnel;
 
 #[derive(Parser, Debug)]
 #[clap(
-    name = "tunelo",
+    name = "tunneleo",
     about = "Expose anything to the internet.",
     version
 )]
@@ -35,14 +35,14 @@ enum Command {
     /// Expose a local port through a public URL.
     ///
     /// Run a command and tunnel it:
-    ///   tunelo port 3000 -- pnpm dev
-    ///   tunelo port 5173 -- vite
+    ///   tunneleo port 3000 -- pnpm dev
+    ///   tunneleo port 5173 -- vite
     Port {
         /// Local port to expose.
         port: u16,
 
         /// Relay server address.
-        #[clap(short, long, env = "TUNELO_RELAY", default_value = "tunelo.net:4433")]
+        #[clap(short, long, env = "TUNNELEO_RELAY", default_value = "agent-tunnel.woa.com:4433")]
         relay: String,
 
         /// Local host to forward to.
@@ -60,7 +60,7 @@ enum Command {
 
         /// WebSocket relay address (used when --transport ws).
         /// Example: ws://relay.example.com:4434
-        #[clap(long, env = "TUNELO_WS_RELAY")]
+        #[clap(long, env = "TUNNELEO_WS_RELAY")]
         ws_relay: Option<String>,
 
         /// Command to run (everything after --).
@@ -83,7 +83,7 @@ enum Command {
         port: u16,
 
         /// Relay server address.
-        #[clap(short, long, env = "TUNELO_RELAY", default_value = "tunelo.net:4433")]
+        #[clap(short, long, env = "TUNNELEO_RELAY", default_value = "agent-tunnel.woa.com:4433")]
         relay: String,
 
         /// Protect the tunnel with a password.
@@ -96,14 +96,14 @@ enum Command {
         transport: String,
 
         /// WebSocket relay address (used when --transport ws).
-        #[clap(long, env = "TUNELO_WS_RELAY")]
+        #[clap(long, env = "TUNNELEO_WS_RELAY")]
         ws_relay: Option<String>,
     },
 
     /// Start the relay server.
     Relay {
-        /// Domain suffix for tunnel hostnames (e.g., "tunelo.net").
-        #[clap(long, env = "TUNELO_DOMAIN", default_value = "localhost")]
+        /// Domain suffix for tunnel hostnames (e.g., "agent-tunnel.woa.com").
+        #[clap(long, env = "TUNNELEO_DOMAIN", default_value = "localhost")]
         domain: String,
 
         /// QUIC listener address for tunnel connections from clients.
@@ -130,7 +130,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "tunelo=info,tunelo_relay=info".into()),
+                .unwrap_or_else(|_| "tunneleo=info,tunneleo_relay=info".into()),
         )
         .init();
 
@@ -189,7 +189,7 @@ async fn main() -> Result<()> {
         Command::Relay {
             domain, tunnel_addr, http_addr, max_session, ws_tunnel_addr,
         } => {
-            tunelo_relay::run(domain, tunnel_addr, http_addr, max_session, ws_tunnel_addr).await
+            tunneleo_relay::run(domain, tunnel_addr, http_addr, max_session, ws_tunnel_addr).await
         }
     }
 }

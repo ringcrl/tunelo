@@ -1,4 +1,4 @@
-//! QUIC tunnel listener — accepts connections from tunelo clients.
+//! QUIC tunnel listener — accepts connections from tunneleo clients.
 //!
 //! - Random subdomain only (no custom subdomains)
 //! - Server-side max session duration (silent, not exposed to client)
@@ -11,7 +11,7 @@ use anyhow::{bail, Context, Result};
 use tokio::time::{interval, Duration, Instant};
 use tracing::{info, info_span, warn, Instrument};
 
-use tunelo_protocol::{
+use tunneleo_protocol::{
     read_message, write_message, ClientControl, RelayControl, PROTOCOL_VERSION,
 };
 
@@ -75,7 +75,7 @@ async fn handle_connection(
     if version != PROTOCOL_VERSION {
         send_error(
             &mut tx,
-            tunelo_protocol::error_codes::VERSION_MISMATCH,
+            tunneleo_protocol::error_codes::VERSION_MISMATCH,
             &format!("version mismatch: server={PROTOCOL_VERSION}, client={version}"),
         )
         .await;

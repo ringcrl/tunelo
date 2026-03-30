@@ -130,13 +130,13 @@ export default function Explorer() {
         display: "flex", justifyContent: "flex-end", alignItems: "center",
       }}>
         <a
-          href="https://tunelo.net"
+          href="https://agent-tunnel.woa.com"
           target="_blank"
           rel="noopener noreferrer"
           style={{ fontSize: 12, color: "var(--dropbox-gray-500)", textDecoration: "none" }}
         >
           Served by{" "}
-          <span style={{ fontWeight: 600, color: "var(--dropbox-blue)" }}>tunelo</span>
+          <span style={{ fontWeight: 600, color: "var(--dropbox-blue)" }}>tunneleo</span>
         </a>
       </div>
     </div>

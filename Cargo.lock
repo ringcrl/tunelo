@@ -1512,7 +1512,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "tunelo"
+name = "tungstenite"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18e5b8366ee7a95b16d32197d0b2604b43a0be89dc5fac9f8e96ccafbaedda8a"
+dependencies = [
+ "byteorder",
+ "bytes",
+ "data-encoding",
+ "http",
+ "httparse",
+ "log",
+ "rand 0.8.5",
+ "sha1",
+ "thiserror 1.0.69",
+ "utf-8",
+]
+
+[[package]]
+name = "tunneleo"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1533,12 +1551,12 @@ dependencies = [
  "tokio-util",
  "tracing",
  "tracing-subscriber",
- "tunelo-protocol",
- "tunelo-relay",
+ "tunneleo-protocol",
+ "tunneleo-relay",
 ]
 
 [[package]]
-name = "tunelo-protocol"
+name = "tunneleo-protocol"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1552,7 +1570,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tunelo-relay"
+name = "tunneleo-relay"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1569,26 +1587,8 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "tracing",
- "tunelo-protocol",
+ "tunneleo-protocol",
  "uuid",
-]
-
-[[package]]
-name = "tungstenite"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18e5b8366ee7a95b16d32197d0b2604b43a0be89dc5fac9f8e96ccafbaedda8a"
-dependencies = [
- "byteorder",
- "bytes",
- "data-encoding",
- "http",
- "httparse",
- "log",
- "rand 0.8.5",
- "sha1",
- "thiserror 1.0.69",
- "utf-8",
 ]
 
 [[package]]

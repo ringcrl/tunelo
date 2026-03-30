@@ -1,6 +1,6 @@
 [package]
-name = "tunelo-protocol"
-description = "Shared protocol types for Tunelo tunnel"
+name = "tunneleo-protocol"
+description = "Shared protocol types for Tunneleo tunnel"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

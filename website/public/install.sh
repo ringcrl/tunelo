@@ -1,9 +1,9 @@
 #!/bin/sh
-# Tunelo installer — curl -fsSL https://tunelo.net/install.sh | sh
+# Tunneleo installer — curl -fsSL https://agent-tunnel.woa.com/install.sh | sh
 set -eu
 
-REPO="jiweiyuan/tunelo"
-BINARY="tunelo"
+REPO="jiweiyuan/tunneleo"
+BINARY="tunneleo"
 INSTALL_DIR="/usr/local/bin"
 
 # ── Detect platform ────────────────────────────────────────────
@@ -41,13 +41,13 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-echo "→ Installing tunelo ${VERSION} (${PLATFORM})..."
+echo "→ Installing tunneleo ${VERSION} (${PLATFORM})..."
 
 # ── Download ───────────────────────────────────────────────────
 if [ "$os" = "windows" ]; then
-  FILENAME="tunelo-${PLATFORM}.exe"
+  FILENAME="tunneleo-${PLATFORM}.exe"
 else
-  FILENAME="tunelo-${PLATFORM}"
+  FILENAME="tunneleo-${PLATFORM}"
 fi
 
 URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILENAME}"
@@ -63,7 +63,7 @@ if [ "$os" = "windows" ]; then
   mkdir -p "$WIN_INSTALL_DIR"
   mv "$TMPFILE" "${WIN_INSTALL_DIR}/${BINARY}.exe"
   echo ""
-  echo "  ✔ tunelo ${VERSION} installed to ${WIN_INSTALL_DIR}/${BINARY}.exe"
+  echo "  ✔ tunneleo ${VERSION} installed to ${WIN_INSTALL_DIR}/${BINARY}.exe"
   echo ""
   echo "  Make sure ${WIN_INSTALL_DIR} is in your PATH."
   echo "  Or use PowerShell to install system-wide (see below)."
@@ -77,12 +77,12 @@ else
     sudo mv "$TMPFILE" "${INSTALL_DIR}/${BINARY}"
   fi
   echo ""
-  echo "  ✔ tunelo ${VERSION} installed to ${INSTALL_DIR}/${BINARY}"
+  echo "  ✔ tunneleo ${VERSION} installed to ${INSTALL_DIR}/${BINARY}"
   echo ""
 fi
 
 echo "  Get started:"
-echo "    tunelo port 3000        expose a local service"
-echo "    tunelo serve .          share files"
-echo "    tunelo --help           see all commands"
+echo "    tunneleo port 3000        expose a local service"
+echo "    tunneleo serve .          share files"
+echo "    tunneleo --help           see all commands"
 echo ""

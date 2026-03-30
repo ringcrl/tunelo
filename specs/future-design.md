@@ -15,7 +15,7 @@ Every relay server is a fully independent node. The client connects to **all** r
            │        └─────────────┘
            │
 ┌──────────┤        ┌─────────────┐
-│  tunelo  │  QUIC  │  US relay   │  ← browser (US visitor)
+│  tunneleo  │  QUIC  │  US relay   │  ← browser (US visitor)
 │  client  ├───────▶│  :4433      │
 │          │        └─────────────┘
 └──────────┤
@@ -29,23 +29,23 @@ Browser → GeoDNS → nearest relay → relay already has the tunnel → direct
 
 ## How it works
 
-1. Client starts: `tunelo port 3000`
-2. Client fetches relay list from a discovery endpoint (e.g. `https://tunelo.net/relays.json`)
+1. Client starts: `tunneleo port 3000`
+2. Client fetches relay list from a discovery endpoint (e.g. `https://agent-tunnel.woa.com/relays.json`)
 3. Client opens QUIC connections to all relays, registers the same subdomain on each
 4. Each relay independently accepts browser requests and forwards them through its own QUIC connection to the client
-5. GeoDNS (Cloudflare Load Balancer or Route 53 Geolocation) routes `*.tunelo.net` to the nearest relay
+5. GeoDNS (Cloudflare Load Balancer or Route 53 Geolocation) routes `*.agent-tunnel.woa.com` to the nearest relay
 
 ## Relay discovery
 
 A simple static JSON served from the website:
 
 ```json
-// https://tunelo.net/relays.json
+// https://agent-tunnel.woa.com/relays.json
 {
   "relays": [
-    { "id": "eu", "addr": "eu.tunelo.net:4433", "location": "London" },
-    { "id": "us", "addr": "us.tunelo.net:4433", "location": "Virginia" },
-    { "id": "jp", "addr": "jp.tunelo.net:4433", "location": "Tokyo" }
+    { "id": "eu", "addr": "eu.agent-tunnel.woa.com:4433", "location": "London" },
+    { "id": "us", "addr": "us.agent-tunnel.woa.com:4433", "location": "Virginia" },
+    { "id": "jp", "addr": "jp.agent-tunnel.woa.com:4433", "location": "Tokyo" }
   ]
 }
 ```
@@ -67,9 +67,9 @@ Option A is better — simpler, no ordering dependency.
 Single wildcard with GeoDNS routing:
 
 ```
-*.tunelo.net  →  EU visitor → 130.162.188.52 (London)
-*.tunelo.net  →  US visitor → 1.2.3.4        (Virginia)
-*.tunelo.net  →  JP visitor → 5.6.7.8        (Tokyo)
+*.agent-tunnel.woa.com  →  EU visitor → 130.162.188.52 (London)
+*.agent-tunnel.woa.com  →  US visitor → 1.2.3.4        (Virginia)
+*.agent-tunnel.woa.com  →  JP visitor → 5.6.7.8        (Tokyo)
 ```
 
 Use Cloudflare Load Balancer ($5/mo) or AWS Route 53 Geolocation Routing.

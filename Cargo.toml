@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "crates/protocol",
-    "crates/tunelo",
+    "crates/tunneleo",
     "crates/relay",
 ]
 
@@ -10,7 +10,7 @@ members = [
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/jiweiyuan/tunelo"
+repository = "https://github.com/jiweiyuan/tunneleo"
 
 [workspace.dependencies]
 # Async runtime

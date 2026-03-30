@@ -22,7 +22,7 @@ pub enum ClientControl {
 pub enum RelayControl {
     /// Successful registration response.
     Registered {
-        /// The full public hostname, e.g. "abc123.tunelo.net"
+        /// The full public hostname, e.g. "abc123.agent-tunnel.woa.com"
         hostname: String,
         /// Unique tunnel session ID.
         tunnel_id: String,

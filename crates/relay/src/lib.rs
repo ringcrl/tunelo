@@ -1,4 +1,4 @@
-//! Tunelo Relay — public-facing server.
+//! Tunneleo Relay — public-facing server.
 //!
 //! 1. Accepts QUIC tunnel connections from clients
 //! 2. Accepts WebSocket tunnel connections from clients (UDP-blocked fallback)

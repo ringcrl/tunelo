@@ -13,7 +13,7 @@ use anyhow::{Context as _, Result};
 use tokio::io::{self, AsyncRead, AsyncWrite, ReadBuf};
 use tracing::debug;
 
-use tunelo_protocol::WsBidi;
+use tunneleo_protocol::WsBidi;
 
 use crate::router::{TunnelSession, TunnelTransport};
 

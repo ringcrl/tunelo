@@ -27,45 +27,45 @@ export function ContentZh() {
   return (
     <>
       <P>
-        将任何东西暴露到互联网 —— 本地端口、文件、目录。一条命令，即刻获得 HTTPS 隧道。使用 <strong>Rust</strong> 构建 —— 单一二进制文件，8 MB 内存，零拷贝数据面。<A href="https://github.com/jiweiyuan/tunelo">在 GitHub 上点 Star</A>。
+        将任何东西暴露到互联网 —— 本地端口、文件、目录。一条命令，即刻获得 HTTPS 隧道。使用 <strong>Rust</strong> 构建 —— 单一二进制文件，8 MB 内存，零拷贝数据面。<A href="https://github.com/jiweiyuan/tunneleo">在 GitHub 上点 Star</A>。
       </P>
 
-      <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunelo port 3000
+      <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunneleo port 3000
   Tunnel is ready.
 
-  Public URL:  https://swift-fox-3847.tunelo.net
+  Public URL:  https://swift-fox-3847.agent-tunnel.woa.com
   Forwarding:  http://localhost:3000`}</CodeBlock>
 
-      <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunelo serve .
+      <CodeBlock lang="bash" showLineNumbers={false}>{`$ tunneleo serve .
   Serving /Users/you/project on :51234
   Tunnel is ready.
 
-  Public URL:  https://calm-river-9012.tunelo.net
+  Public URL:  https://calm-river-9012.agent-tunnel.woa.com
   Forwarding:  http://127.0.0.1:51234`}</CodeBlock>
 
       <P>
-        其他隧道工具需要配置文件、账号或管理面板。Tunelo 是一个<strong>单一二进制文件</strong>，只做两件事：暴露本地端口，或通过内置的 Web 文件浏览器提供文件服务。QUIC 传输协议提供多路复用、加密、低延迟的隧道。默认情况下，客户端连接到 <Code>tunelo.net</Code> 公共中继 —— 或使用 <Code>--relay</Code> 指向你自己的中继服务器。
+        其他隧道工具需要配置文件、账号或管理面板。Tunneleo 是一个<strong>单一二进制文件</strong>，只做两件事：暴露本地端口，或通过内置的 Web 文件浏览器提供文件服务。QUIC 传输协议提供多路复用、加密、低延迟的隧道。默认情况下，客户端连接到 <Code>agent-tunnel.woa.com</Code> 公共中继 —— 或使用 <Code>--relay</Code> 指向你自己的中继服务器。
       </P>
 
       <Section id="install" title="安装">
         <P><strong>macOS / Linux：</strong></P>
-        <CodeBlock lang="bash" showLineNumbers={false}>{`curl -fsSL https://tunelo.net/install.sh | sh`}</CodeBlock>
+        <CodeBlock lang="bash" showLineNumbers={false}>{`curl -fsSL https://agent-tunnel.woa.com/install.sh | sh`}</CodeBlock>
 
         <P><strong>Windows (PowerShell)：</strong></P>
-        <CodeBlock lang="bash" showLineNumbers={false}>{`irm https://tunelo.net/install.ps1 | iex`}</CodeBlock>
+        <CodeBlock lang="bash" showLineNumbers={false}>{`irm https://agent-tunnel.woa.com/install.ps1 | iex`}</CodeBlock>
 
         <P>支持的平台：</P>
         <ComparisonTable
           headers={['操作系统', '架构', '二进制文件']}
           rows={[
-            ['Linux', 'x86_64 / arm64', 'tunelo-linux-amd64 / arm64'],
-            ['macOS', 'x86_64 / arm64', 'tunelo-macos-amd64 / arm64'],
-            ['Windows', 'x86_64', 'tunelo-windows-amd64.exe'],
+            ['Linux', 'x86_64 / arm64', 'tunneleo-linux-amd64 / arm64'],
+            ['macOS', 'x86_64 / arm64', 'tunneleo-macos-amd64 / arm64'],
+            ['Windows', 'x86_64', 'tunneleo-windows-amd64.exe'],
           ]}
         />
 
         <P>
-          也可以直接从 <A href="https://github.com/jiweiyuan/tunelo/releases">GitHub Releases</A> 下载。
+          也可以直接从 <A href="https://github.com/jiweiyuan/tunneleo/releases">GitHub Releases</A> 下载。
         </P>
       </Section>
 
@@ -78,45 +78,45 @@ export function ContentZh() {
         <CodeBlock lang="bash">{`python3 -m http.server 3000`}</CodeBlock>
 
         <P>2. 暴露它：</P>
-        <CodeBlock lang="bash">{`tunelo port 3000`}</CodeBlock>
+        <CodeBlock lang="bash">{`tunneleo port 3000`}</CodeBlock>
 
         <P>
-          就这么简单 —— 不需要任何参数。客户端默认连接到 <Code>tunelo.net</Code> 公共中继，为你分配一个类似 <Code>https://swift-fox-3847.tunelo.net</Code> 的公共 URL，并通过加密的 QUIC 隧道将流量转发到你的 localhost。
+          就这么简单 —— 不需要任何参数。客户端默认连接到 <Code>agent-tunnel.woa.com</Code> 公共中继，为你分配一个类似 <Code>https://swift-fox-3847.agent-tunnel.woa.com</Code> 的公共 URL，并通过加密的 QUIC 隧道将流量转发到你的 localhost。
         </P>
 
         <P>或者一步到位，运行命令并创建隧道：</P>
-        <CodeBlock lang="bash">{`tunelo port 3000 -- pnpm dev`}</CodeBlock>
+        <CodeBlock lang="bash">{`tunneleo port 3000 -- pnpm dev`}</CodeBlock>
 
         <P>
-          Tunelo 会启动 <Code>pnpm dev</Code>，等待端口 3000 就绪，然后创建隧道。任一方停止时，另一方也会自动清理。
+          Tunneleo 会启动 <Code>pnpm dev</Code>，等待端口 3000 就绪，然后创建隧道。任一方停止时，另一方也会自动清理。
         </P>
 
-        <P>安装 <strong>skill</strong> 来教你的 AI 编程助手使用 tunelo：</P>
-        <CodeBlock lang="bash" showLineNumbers={false}>{`npx -y skills add tunelo/tunelo`}</CodeBlock>
+        <P>安装 <strong>skill</strong> 来教你的 AI 编程助手使用 tunneleo：</P>
+        <CodeBlock lang="bash" showLineNumbers={false}>{`npx -y skills add tunneleo/tunneleo`}</CodeBlock>
 
         <Caption>该 skill 会教你的 AI 助手了解 CLI 用法、何时使用隧道，并自动完成配置。</Caption>
       </Section>
 
       <Section id="file-server" title="文件服务器">
         <P>
-          运行 <Code>tunelo serve .</Code> 或 <Code>tunelo serve ./dist</Code>，tunelo 会启动<strong>内置文件服务器</strong>，配备 React Web 文件浏览器 —— 直接嵌入到二进制文件中。浏览目录、预览文件、通过公共 URL 分享。无需 nginx、无需 Python 服务器、无需外部依赖。
+          运行 <Code>tunneleo serve .</Code> 或 <Code>tunneleo serve ./dist</Code>，tunneleo 会启动<strong>内置文件服务器</strong>，配备 React Web 文件浏览器 —— 直接嵌入到二进制文件中。浏览目录、预览文件、通过公共 URL 分享。无需 nginx、无需 Python 服务器、无需外部依赖。
         </P>
 
         <CodeBlock lang="bash">{`# 通过隧道提供当前目录
-tunelo serve .
+tunneleo serve .
 
 # 提供指定目录
-tunelo serve ./dist
+tunneleo serve ./dist
 
 # 提供单个文件
-tunelo serve README.md
-tunelo serve index.html
+tunneleo serve README.md
+tunneleo serve index.html
 
 # 仅本地预览（不创建隧道）
-tunelo serve . --local
+tunneleo serve . --local
 
 # 在指定端口上本地预览
-tunelo serve . -l -p 8000`}</CodeBlock>
+tunneleo serve . -l -p 8000`}</CodeBlock>
 
         <P>Web 文件浏览器支持：</P>
         <List>
@@ -145,7 +145,7 @@ tunelo serve . -l -p 8000`}</CodeBlock>
                  (8 MB)                (8 MB)
 
 ┌──────────┐   ┌────────────────┐   ┌───────────────┐   ┌───────────┐
-│   浏览器  │──▶│  tunelo relay  │◀──│ tunelo client  │──▶│ localhost │
+│   浏览器  │──▶│  tunneleo relay  │◀──│ tunneleo client  │──▶│ localhost │
 │           │   │  TLS + 路由    │   │  QUIC 隧道     │   │   :3000   │
 └──────────┘   └────────────────┘   └───────────────┘   └───────────┘
     互联网          你的 VPS            你的机器           你的应用`}</CodeBlock>
@@ -161,55 +161,55 @@ tunelo serve . -l -p 8000`}</CodeBlock>
 
       <Section id="cli-reference" title="命令参考">
         <P>
-          客户端和中继<strong>完全解耦</strong>。客户端默认连接 <Code>tunelo.net:4433</Code> 公共中继 —— 或使用 <Code>--relay</Code> 指向你自己的服务器。无需账号，无需注册。
+          客户端和中继<strong>完全解耦</strong>。客户端默认连接 <Code>agent-tunnel.woa.com:4433</Code> 公共中继 —— 或使用 <Code>--relay</Code> 指向你自己的服务器。无需账号，无需注册。
         </P>
 
         <CodeBlock lang="bash">{`# 端口模式 —— 暴露本地端口
-tunelo port 3000
-tunelo port 3000 --relay my.server:4433
-tunelo port 3000 -H 192.168.1.100
-tunelo port 3000 --password
-tunelo port 3000 --password mysecret
+tunneleo port 3000
+tunneleo port 3000 --relay my.server:4433
+tunneleo port 3000 -H 192.168.1.100
+tunneleo port 3000 --password
+tunneleo port 3000 --password mysecret
 
 # 运行命令并创建隧道
-tunelo port 3000 -- pnpm dev
-tunelo port 3000 -- next start
-tunelo port 5173 -- vite
+tunneleo port 3000 -- pnpm dev
+tunneleo port 3000 -- next start
+tunneleo port 5173 -- vite
 
 # 文件模式 —— 提供文件或目录
-tunelo serve .
-tunelo serve ./dist
-tunelo serve README.md
-tunelo serve . --local
-tunelo serve . -l -p 8000`}</CodeBlock>
+tunneleo serve .
+tunneleo serve ./dist
+tunneleo serve README.md
+tunneleo serve . --local
+tunneleo serve . -l -p 8000`}</CodeBlock>
 
         <P>中继配置：</P>
 
         <CodeBlock lang="bash">{`# 使用默认配置启动
-tunelo relay
+tunneleo relay
 
 # 生产环境部署
-tunelo relay --domain tunelo.net
+tunneleo relay --domain agent-tunnel.woa.com
 
 # 自定义地址
-tunelo relay --tunnel-addr 0.0.0.0:4433 --http-addr 0.0.0.0:80`}</CodeBlock>
+tunneleo relay --tunnel-addr 0.0.0.0:4433 --http-addr 0.0.0.0:80`}</CodeBlock>
 
         <Caption>客户端：一个二进制，一条命令。中继：三个参数。</Caption>
       </Section>
 
       <Section id="self-hosting" title="自建部署">
         <P>
-          不想用公共中继？在任意 VPS 上运行你自己的。客户端和中继是同一个二进制文件 —— 只需用 <Code>--relay</Code> 指向你的服务器。<A href="https://github.com/jiweiyuan/tunelo/tree/main/deploy">deploy/</A> 目录包含一切：systemd 服务、nginx 配置、Let's Encrypt + Cloudflare DNS。
+          不想用公共中继？在任意 VPS 上运行你自己的。客户端和中继是同一个二进制文件 —— 只需用 <Code>--relay</Code> 指向你的服务器。<A href="https://github.com/jiweiyuan/tunneleo/tree/main/deploy">deploy/</A> 目录包含一切：systemd 服务、nginx 配置、Let's Encrypt + Cloudflare DNS。
         </P>
 
         <CodeBlock lang="bash">{`# 构建中继
-cargo build --release --bin tunelo
+cargo build --release --bin tunneleo
 
 # 运行
-./target/release/tunelo relay --domain yourdomain.com
+./target/release/tunneleo relay --domain yourdomain.com
 
 # 将客户端指向它
-tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
+tunneleo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
 
         <P>你需要：</P>
         <List>
@@ -244,21 +244,21 @@ tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
 
       <Section id="ai-skill" title="AI 技能">
         <P>
-          Tunelo 附带了一个 <strong>SKILL.md</strong>，可以教任何 AI 编程助手如何创建隧道。一条命令即可安装：
+          Tunneleo 附带了一个 <strong>SKILL.md</strong>，可以教任何 AI 编程助手如何创建隧道。一条命令即可安装：
         </P>
 
-        <CodeBlock lang="bash" showLineNumbers={false}>{`npx -y skills add tunelo/tunelo`}</CodeBlock>
+        <CodeBlock lang="bash" showLineNumbers={false}>{`npx -y skills add tunneleo/tunneleo`}</CodeBlock>
 
         <P>
-          该 skill 告诉你的 AI 助手 tunelo 的功能、使用场景和所有 CLI 参数。安装后，当你要求"分享这个本地服务"或"暴露我的开发服务器"时，AI 助手就能运行 <Code>tunelo port 3000</Code>。
+          该 skill 告诉你的 AI 助手 tunneleo 的功能、使用场景和所有 CLI 参数。安装后，当你要求"分享这个本地服务"或"暴露我的开发服务器"时，AI 助手就能运行 <Code>tunneleo port 3000</Code>。
         </P>
 
         <P>skill 包含的内容：</P>
         <List>
-          <Li>使用 <Code>tunelo port &lt;port&gt;</Code> 暴露端口</Li>
-          <Li>使用 <Code>tunelo port 3000 -- pnpm dev</Code> 运行命令并创建隧道</Li>
+          <Li>使用 <Code>tunneleo port &lt;port&gt;</Code> 暴露端口</Li>
+          <Li>使用 <Code>tunneleo port 3000 -- pnpm dev</Code> 运行命令并创建隧道</Li>
           <Li>使用 <Code>--password</Code> 进行密码保护</Li>
-          <Li>使用 <Code>tunelo serve .</Code> 提供文件服务</Li>
+          <Li>使用 <Code>tunneleo serve .</Code> 提供文件服务</Li>
         </List>
 
         <Caption>遵循与 <A href="https://github.com/runbrowser/runbrowser">RunBrowser</A> 相同的 skill 格式。</Caption>
@@ -266,12 +266,12 @@ tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
 
       <Section id="comparison" title="对比">
         <P>
-          为什么选择 tunelo 而不是其他方案。
+          为什么选择 tunneleo 而不是其他方案。
         </P>
 
         <ComparisonTable
           title="vs ngrok"
-          headers={['', 'ngrok', 'tunelo']}
+          headers={['', 'ngrok', 'tunneleo']}
           rows={[
             ['价格', '免费版有限制', '免费且开源'],
             ['需要账号', '是', '否'],
@@ -284,19 +284,19 @@ tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
 
         <ComparisonTable
           title="vs bore"
-          headers={['', 'bore', 'tunelo']}
+          headers={['', 'bore', 'tunneleo']}
           rows={[
             ['路由方式', '按 TCP 端口', '按子域名（主机名）'],
             ['传输协议', 'TCP', 'QUIC（多路复用）'],
             ['TLS', '无内置', '中继端 TLS'],
-            ['公共 URL', 'bore.pub:PORT', 'subdomain.tunelo.net'],
+            ['公共 URL', 'bore.pub:PORT', 'subdomain.agent-tunnel.woa.com'],
             ['HTTP 感知', '否', '是（Host 头部路由）'],
           ]}
         />
 
         <ComparisonTable
           title="vs Cloudflare Tunnel"
-          headers={['', 'cloudflared', 'tunelo']}
+          headers={['', 'cloudflared', 'tunneleo']}
           rows={[
             ['可自建', '否', '是'],
             ['供应商锁定', '仅 Cloudflare', '任意 VPS'],
@@ -322,7 +322,7 @@ tunelo port 3000 --relay yourdomain.com:4433`}</CodeBlock>
       </Section>
 
       <P>
-        MIT 许可证 · <A href="https://github.com/jiweiyuan/tunelo">GitHub</A>
+        MIT 许可证 · <A href="https://github.com/jiweiyuan/tunneleo">GitHub</A>
       </P>
     </>
   )

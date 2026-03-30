@@ -1,12 +1,12 @@
 [package]
-name = "tunelo-relay"
-description = "Tunelo relay — routes public HTTP to tunnel clients"
+name = "tunneleo-relay"
+description = "Tunneleo relay — routes public HTTP to tunnel clients"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
-tunelo-protocol = { path = "../protocol" }
+tunneleo-protocol = { path = "../protocol" }
 
 tokio = { workspace = true }
 quinn = { workspace = true }

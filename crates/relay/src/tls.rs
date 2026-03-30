@@ -12,8 +12,8 @@ pub fn build_quic_server_config() -> Result<quinn::ServerConfig> {
     // Generate self-signed cert
     let cert = rcgen::generate_simple_self_signed(vec![
         "localhost".to_string(),
-        "tunelo.net".to_string(),
-        "*.tunelo.net".to_string(),
+        "agent-tunnel.woa.com".to_string(),
+        "*.agent-tunnel.woa.com".to_string(),
     ])?;
     let cert_der = cert.cert.der().clone();
     let key_der = cert.key_pair.serialize_der();
@@ -25,7 +25,7 @@ pub fn build_quic_server_config() -> Result<quinn::ServerConfig> {
         .with_no_client_auth()
         .with_single_cert(cert_chain, key.into())?;
 
-    server_crypto.alpn_protocols = vec![b"tunelo/1".to_vec()];
+    server_crypto.alpn_protocols = vec![b"tunneleo/1".to_vec()];
 
     let mut server_config = quinn::ServerConfig::with_crypto(Arc::new(
         quinn::crypto::rustls::QuicServerConfig::try_from(server_crypto)?,

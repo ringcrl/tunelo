@@ -9,7 +9,7 @@ use anyhow::{bail, Context, Result};
 use tokio::time::sleep;
 use tracing::{error, info, info_span, warn, Instrument};
 
-use tunelo_protocol::{
+use tunneleo_protocol::{
     read_message, write_message, ClientControl, RelayControl, WsMux, PROTOCOL_VERSION,
 };
 
@@ -286,7 +286,7 @@ async fn connect_quic(relay: &str) -> Result<quinn::Connection> {
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(InsecureVerifier))
         .with_no_client_auth();
-    crypto.alpn_protocols = vec![b"tunelo/1".to_vec()];
+    crypto.alpn_protocols = vec![b"tunneleo/1".to_vec()];
 
     let mut client_config = quinn::ClientConfig::new(Arc::new(
         quinn::crypto::rustls::QuicClientConfig::try_from(crypto)?,
@@ -315,7 +315,7 @@ async fn connect_quic(relay: &str) -> Result<quinn::Connection> {
         .context("resolve relay")?;
 
     endpoint
-        .connect(addr, "tunelo")?
+        .connect(addr, "tunneleo")?
         .await
         .context("QUIC connect")
 }

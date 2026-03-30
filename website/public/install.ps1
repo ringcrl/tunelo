@@ -1,10 +1,10 @@
-# Tunelo installer for Windows (PowerShell)
-# Usage: irm https://tunelo.net/install.ps1 | iex
+# Tunneleo installer for Windows (PowerShell)
+# Usage: irm https://agent-tunnel.woa.com/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
-$repo = "jiweiyuan/tunelo"
-$binary = "tunelo.exe"
+$repo = "jiweiyuan/tunneleo"
+$binary = "tunneleo.exe"
 
 # ── Detect architecture ─────────────────────────────────────────
 $arch = if ([Environment]::Is64BitOperatingSystem) { "amd64" } else {
@@ -24,12 +24,12 @@ if (-not $version) {
     exit 1
 }
 
-Write-Host "→ Installing tunelo $version ($platform)..."
+Write-Host "→ Installing tunneleo $version ($platform)..."
 
 # ── Download ────────────────────────────────────────────────────
-$filename = "tunelo-${platform}.exe"
+$filename = "tunneleo-${platform}.exe"
 $url = "https://github.com/$repo/releases/download/$version/$filename"
-$installDir = "$env:LOCALAPPDATA\tunelo"
+$installDir = "$env:LOCALAPPDATA\tunneleo"
 $installPath = Join-Path $installDir $binary
 
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
@@ -46,12 +46,12 @@ if ($userPath -notlike "*$installDir*") {
 }
 
 Write-Host ""
-Write-Host "  ✔ tunelo $version installed to $installPath" -ForegroundColor Green
+Write-Host "  ✔ tunneleo $version installed to $installPath" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Get started:"
-Write-Host "    tunelo port 3000        expose a local service"
-Write-Host "    tunelo serve .          share files"
-Write-Host "    tunelo --help           see all commands"
+Write-Host "    tunneleo port 3000        expose a local service"
+Write-Host "    tunneleo serve .          share files"
+Write-Host "    tunneleo --help           see all commands"
 Write-Host ""
 Write-Host "  Note: restart your terminal for PATH changes to take effect."
 Write-Host ""

@@ -11,7 +11,7 @@ use tokio::io::{self, AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
 use tracing::debug;
 
-use tunelo_protocol::{WsBidi, WsStreamReader, WsStreamWriter};
+use tunneleo_protocol::{WsBidi, WsStreamReader, WsStreamWriter};
 
 /// Relay one QUIC data stream to localhost and back.
 pub async fn handle_data_stream(

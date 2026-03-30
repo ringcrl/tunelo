@@ -14,7 +14,7 @@ use names::Generator;
 use quinn::Connection;
 use tracing::info;
 
-use tunelo_protocol::WsMux;
+use tunneleo_protocol::WsMux;
 
 /// Transport layer for a tunnel session.
 #[derive(Clone)]

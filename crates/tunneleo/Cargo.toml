@@ -1,17 +1,17 @@
 [package]
-name = "tunelo"
+name = "tunneleo"
 description = "Expose anything to the internet — local ports, files, directories"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "tunelo"
+name = "tunneleo"
 path = "src/main.rs"
 
 [dependencies]
-tunelo-protocol = { path = "../protocol" }
-tunelo-relay = { path = "../relay" }
+tunneleo-protocol = { path = "../protocol" }
+tunneleo-relay = { path = "../relay" }
 
 tokio = { workspace = true }
 quinn = { workspace = true }
