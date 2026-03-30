@@ -165,7 +165,7 @@ tunelo relay (HTTP :8080) ───┘
 
 ### Step 1: DNS 解析
 
-在域名管理后台添加两条 A 记录：
+添加两条 A 记录：
 
 | 类型 | 名称 | 值 |
 |------|------|-----|
@@ -183,48 +183,40 @@ dig test.agent-tunnel.woa.com +short   # 同上
 
 ### Step 2: 服务器初始化
 
-SSH 登录 VPS：
-
 ```bash
-# 防火墙放行
+# 防火墙放行（云厂商还需在安全组里放行这些端口）
 sudo iptables -I INPUT 5 -p tcp --dport 80 -j ACCEPT
 sudo iptables -I INPUT 5 -p tcp --dport 443 -j ACCEPT
 sudo iptables -I INPUT 5 -p udp --dport 4433 -j ACCEPT
 sudo iptables -I INPUT 5 -p tcp --dport 4434 -j ACCEPT
-
-# 持久化 iptables
 sudo apt-get install -y iptables-persistent
 sudo netfilter-persistent save
 
-# 安装 Caddy
-sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt-get update
-sudo apt-get install -y caddy
+# 安装 Caddy（https://github.com/caddyserver/caddy/releases）
+# Linux amd64:
+curl -OL https://github.com/caddyserver/caddy/releases/download/v2.11.2/caddy_2.11.2_linux_amd64.tar.gz
+tar xzf caddy_2.11.2_linux_amd64.tar.gz caddy
+sudo mv caddy /usr/bin/caddy && sudo chmod +x /usr/bin/caddy
+rm -f caddy_2.11.2_linux_amd64.tar.gz
+# Linux arm64:
+# curl -OL https://github.com/caddyserver/caddy/releases/download/v2.11.2/caddy_2.11.2_linux_arm64.tar.gz
+# macOS arm64 (Apple Silicon):
+# curl -OL https://github.com/caddyserver/caddy/releases/download/v2.11.2/caddy_2.11.2_mac_arm64.tar.gz
 
-# 创建 tunelo 用户和目录
-sudo useradd --system --shell /usr/sbin/nologin tunelo || true
-sudo mkdir -p /opt/tunelo/bin /opt/tunelo/website
+# 创建目录
+sudo mkdir -p /opt/tunelo/bin /opt/tunelo/website /etc/caddy /etc/ssl/tunelo
 ```
-
-> 云厂商（AWS / Oracle / 阿里云等）还需在控制台**安全组**里放行 80/TCP、443/TCP、4433/UDP、4434/TCP。
 
 ---
 
 ### Step 3: 准备 SSL 证书
 
-假设你已有 `agent-tunnel.woa.com` + `*.agent-tunnel.woa.com` 的证书文件，将证书和私钥放到服务器上：
+将已有的证书文件放到服务器上：
 
 ```bash
-sudo mkdir -p /etc/ssl/tunelo
 sudo cp fullchain.pem /etc/ssl/tunelo/fullchain.pem
 sudo cp privkey.pem /etc/ssl/tunelo/privkey.pem
-sudo chmod 644 /etc/ssl/tunelo/fullchain.pem
-sudo chmod 600 /etc/ssl/tunelo/privkey.pem
 ```
-
-> 证书到期后需手动替换文件并执行 `sudo systemctl reload caddy`。
 
 ---
 
@@ -250,24 +242,38 @@ agent-tunnel.woa.com {
 }
 ```
 
-Caddy 会自动处理：HTTP→HTTPS 重定向、WebSocket 透传、请求头转发。无需额外配置。
-
-启用：
+启动 Caddy：
 
 ```bash
-sudo caddy fmt --overwrite /etc/caddy/Caddyfile
-sudo systemctl restart caddy
-sudo systemctl status caddy   # 确认 active (running)
+# 创建 systemd 服务
+sudo tee /etc/systemd/system/caddy.service << 'EOF'
+[Unit]
+Description=Caddy
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/caddy run --config /etc/caddy/Caddyfile
+ExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile
+Restart=always
+RestartSec=5
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable caddy
+sudo systemctl start caddy
 ```
 
 ---
 
 ### Step 5: 编译并上传 tunelo
 
-在本地 macOS 交叉编译：
+本地交叉编译：
 
 ```bash
-# 先构建前端（编译时会嵌入二进制）
 cd web && pnpm install && pnpm build && cd ..
 
 # arm64 服务器：
@@ -276,48 +282,29 @@ cargo build --release --target aarch64-unknown-linux-musl --bin tunelo
 # cargo build --release --target x86_64-unknown-linux-musl --bin tunelo
 ```
 
-上传：
+上传二进制和落地页：
 
 ```bash
 scp target/aarch64-unknown-linux-musl/release/tunelo your-vps:/tmp/tunelo
+ssh your-vps "sudo mv /tmp/tunelo /opt/tunelo/bin/tunelo && sudo chmod +x /opt/tunelo/bin/tunelo"
 
-ssh your-vps "
-  sudo mv /tmp/tunelo /opt/tunelo/bin/tunelo
-  sudo chmod +x /opt/tunelo/bin/tunelo
-  sudo chown tunelo:tunelo /opt/tunelo/bin/tunelo
-"
-```
-
-上传落地页网站：
-
-```bash
 cd website && pnpm install && pnpm build && cd ..
 scp -r website/dist/* your-vps:/tmp/tunelo-website/
-
-ssh your-vps "
-  sudo rm -rf /opt/tunelo/website/*
-  sudo cp -r /tmp/tunelo-website/* /opt/tunelo/website/
-  sudo chown -R tunelo:tunelo /opt/tunelo/website/
-  rm -rf /tmp/tunelo-website
-"
+ssh your-vps "sudo cp -r /tmp/tunelo-website/* /opt/tunelo/website/ && rm -rf /tmp/tunelo-website"
 ```
 
 ---
 
-### Step 6: 配置 systemd 服务
+### Step 6: 配置 tunelo relay 服务
 
-在 VPS 上创建 `/etc/systemd/system/tunelo-relay.service`：
+创建 `/etc/systemd/system/tunelo-relay.service`：
 
 ```ini
 [Unit]
 Description=Tunelo Relay Server
 After=network-online.target
-Wants=network-online.target
 
 [Service]
-Type=simple
-User=tunelo
-Group=tunelo
 ExecStart=/opt/tunelo/bin/tunelo relay \
     --domain agent-tunnel.woa.com \
     --tunnel-addr 0.0.0.0:4433 \
@@ -326,12 +313,6 @@ ExecStart=/opt/tunelo/bin/tunelo relay \
 Restart=always
 RestartSec=5
 Environment=RUST_LOG=tunelo=info,tunelo_relay=info
-
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-PrivateTmp=true
-ReadWritePaths=/opt/tunelo
 
 [Install]
 WantedBy=multi-user.target
@@ -343,20 +324,14 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 sudo systemctl enable tunelo-relay
 sudo systemctl start tunelo-relay
-sudo systemctl status tunelo-relay   # 确认 active (running)
 ```
 
 ---
 
 ### Step 7: 验证
 
-在你本地电脑上：
-
 ```bash
-# 启动一个测试服务
 python3 -m http.server 3000
-
-# 建立隧道
 tunelo port 3000 --relay agent-tunnel.woa.com:4433
 ```
 
@@ -369,25 +344,15 @@ Public URL:  https://calm-river-9012.agent-tunnel.woa.com
 Forwarding:  http://localhost:3000
 ```
 
-在浏览器访问 `https://calm-river-9012.agent-tunnel.woa.com` 验证。
-
 ---
 
 ### 日常运维
 
 ```bash
-# 查看 relay 日志
-sudo journalctl -u tunelo-relay -f
-
-# 查看 Caddy 日志
-sudo journalctl -u caddy -f
-
-# 重启服务
-sudo systemctl restart tunelo-relay
-sudo systemctl restart caddy
-
-# 更新证书后重载 Caddy
-sudo systemctl reload caddy
+sudo journalctl -u tunelo-relay -f   # relay 日志
+sudo journalctl -u caddy -f          # caddy 日志
+sudo systemctl restart tunelo-relay   # 重启 relay
+sudo systemctl reload caddy           # 更新证书后重载
 ```
 
 ---
