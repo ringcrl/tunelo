@@ -139,7 +139,7 @@ macOS 临时关闭防火墙：**系统设置 → 网络 → 防火墙 → 关闭
 
 ## 生产部署
 
-你需要：一台公网 VPS（Ubuntu/Debian）+ 一个自己的域名。以下用 `example.com` 代指，请全部替换为你的实际域名。
+你需要：一台公网 VPS（Ubuntu/Debian）+ 域名 `agent-tunnel.woa.com` 已解析到服务器。
 
 ### 架构
 
@@ -147,34 +147,36 @@ macOS 临时关闭防火墙：**系统设置 → 网络 → 防火墙 → 关闭
 浏览器
   │ HTTPS
   ▼
-Nginx (443)          tunelo relay (QUIC :4433, WS :4434)
-  │ TLS 终结               ▲
-  │ *.example.com           │ 客户端通过 QUIC/WS 连入
-  │ proxy_pass :8080        │
-  ▼                         │
-tunelo relay (HTTP :8080) ──┘
+Caddy (443)            tunelo relay (QUIC :4433, WS :4434)
+  │ TLS 终结                 ▲
+  │                          │ 客户端通过 QUIC/WS 连入
+  │ agent-tunnel.woa.com     │
+  │   → 静态站点 (落地页)    │
+  │ *.agent-tunnel.woa.com   │
+  │   → reverse_proxy :8080  │
+  ▼                          │
+tunelo relay (HTTP :8080) ───┘
 ```
 
-Nginx 做 TLS 终结 + 泛域名反代；relay 从 Host 头提取子域名路由到对应隧道。
+- `agent-tunnel.woa.com` — 主站，部署 `website/` 构建产物（静态 HTML 落地页）
+- `*.agent-tunnel.woa.com` — 泛域名，反代到 relay，用于用户隧道的 HTTP/WebSocket 转发
 
 ---
 
 ### Step 1: DNS 解析
 
-在域名管理后台（阿里云 / 腾讯云 / Namesilo / GoDaddy 等）添加两条 A 记录：
+在域名管理后台添加两条 A 记录：
 
 | 类型 | 名称 | 值 |
 |------|------|-----|
-| A | `@` | 你的服务器 IP |
-| A | `*` | 你的服务器 IP |
-
-不需要开 CDN / 代理，直接解析到服务器 IP。
+| A | `agent-tunnel` | 服务器 IP |
+| A | `*.agent-tunnel` | 服务器 IP |
 
 验证：
 
 ```bash
-dig example.com +short        # 应返回你的 IP
-dig test.example.com +short   # 同上
+dig agent-tunnel.woa.com +short        # 应返回服务器 IP
+dig test.agent-tunnel.woa.com +short   # 同上
 ```
 
 ---
@@ -194,9 +196,12 @@ sudo iptables -I INPUT 5 -p tcp --dport 4434 -j ACCEPT
 sudo apt-get install -y iptables-persistent
 sudo netfilter-persistent save
 
-# 安装 Nginx 和 Certbot
+# 安装 Caddy
+sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
 sudo apt-get update
-sudo apt-get install -y nginx certbot
+sudo apt-get install -y caddy
 
 # 创建 tunelo 用户和目录
 sudo useradd --system --shell /usr/sbin/nologin tunelo || true
@@ -207,139 +212,52 @@ sudo mkdir -p /opt/tunelo/bin /opt/tunelo/website
 
 ---
 
-### Step 3: 申请泛域名 SSL 证书
+### Step 3: 准备 SSL 证书
 
-泛域名证书必须用 DNS-01 验证。运行：
-
-```bash
-sudo certbot certonly \
-    --manual \
-    --preferred-challenges dns \
-    -d "example.com" \
-    -d "*.example.com" \
-    --email you@example.com \
-    --agree-tos
-```
-
-certbot 会提示你添加 TXT 记录：
-
-```
-Please deploy a DNS TXT record under the name:
-  _acme-challenge.example.com
-with the following value:
-  xXxXxXxXxXxXxXxXxXx
-```
-
-**操作**：
-
-1. **先不要按回车**，去域名后台添加 TXT 记录（名称 `_acme-challenge`，值为提示的那串字符）
-2. 等 1-5 分钟，验证生效：`dig TXT _acme-challenge.example.com +short`
-3. 确认有返回后，回到终端**按回车**
-4. certbot 可能会再提示一次（给 `*.example.com`），重复上述操作
-
-> 两条 `_acme-challenge` TXT 记录的值不同，大多数 DNS 服务商支持同名多条 TXT，都加上即可。
-
-签发成功后配置自动续期：
+假设你已有 `agent-tunnel.woa.com` + `*.agent-tunnel.woa.com` 的证书文件，将证书和私钥放到服务器上：
 
 ```bash
-sudo systemctl enable certbot.timer
-sudo systemctl start certbot.timer
-
-# 续期后自动 reload Nginx
-sudo mkdir -p /etc/letsencrypt/renewal-hooks/deploy
-cat << 'EOF' | sudo tee /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
-#!/bin/bash
-systemctl reload nginx
-EOF
-sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+sudo mkdir -p /etc/ssl/tunelo
+sudo cp fullchain.pem /etc/ssl/tunelo/fullchain.pem
+sudo cp privkey.pem /etc/ssl/tunelo/privkey.pem
+sudo chmod 644 /etc/ssl/tunelo/fullchain.pem
+sudo chmod 600 /etc/ssl/tunelo/privkey.pem
 ```
 
-> 手动模式的证书续期时仍需手动加 TXT。如需全自动，可用 [acme.sh](https://github.com/acmesh-official/acme.sh)，支持几十种 DNS 服务商 API。
+> 证书到期后需手动替换文件并执行 `sudo systemctl reload caddy`。
 
 ---
 
-### Step 4: 配置 Nginx
+### Step 4: 配置 Caddy
 
-创建配置文件 `/etc/nginx/sites-available/example.com`：
+创建 `/etc/caddy/Caddyfile`：
 
-```nginx
-# HTTP → HTTPS 重定向
-server {
-    listen 80;
-    listen [::]:80;
-    server_name example.com *.example.com;
+```caddyfile
+# 主站 — 落地页静态网站
+agent-tunnel.woa.com {
+    root * /opt/tunelo/website
+    file_server
+    try_files {path} /index.html
 
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-    location / {
-        return 301 https://$host$request_uri;
-    }
+    tls /etc/ssl/tunelo/fullchain.pem /etc/ssl/tunelo/privkey.pem
 }
 
-# 主站
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name example.com;
+# 泛域名 — 隧道 HTTP/WebSocket 反代
+*.agent-tunnel.woa.com {
+    reverse_proxy 127.0.0.1:8080
 
-    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers off;
-
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
-
-    root /opt/tunelo/website;
-    index index.html;
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-
-# 隧道子域名 → relay
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name *.example.com;
-
-    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers off;
-
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
-
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # WebSocket 透传
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-
-        # 长连接超时
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-
-        # 关闭缓冲
-        proxy_buffering off;
-        proxy_request_buffering off;
-    }
+    tls /etc/ssl/tunelo/fullchain.pem /etc/ssl/tunelo/privkey.pem
 }
 ```
+
+Caddy 会自动处理：HTTP→HTTPS 重定向、WebSocket 透传、请求头转发。无需额外配置。
 
 启用：
 
 ```bash
-sudo ln -sf /etc/nginx/sites-available/example.com /etc/nginx/sites-enabled/example.com
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
+sudo caddy fmt --overwrite /etc/caddy/Caddyfile
+sudo systemctl restart caddy
+sudo systemctl status caddy   # 确认 active (running)
 ```
 
 ---
@@ -370,7 +288,7 @@ ssh your-vps "
 "
 ```
 
-如果有落地页网站，也一并上传：
+上传落地页网站：
 
 ```bash
 cd website && pnpm install && pnpm build && cd ..
@@ -401,7 +319,7 @@ Type=simple
 User=tunelo
 Group=tunelo
 ExecStart=/opt/tunelo/bin/tunelo relay \
-    --domain example.com \
+    --domain agent-tunnel.woa.com \
     --tunnel-addr 0.0.0.0:4433 \
     --http-addr 127.0.0.1:8080 \
     --ws-tunnel-addr 0.0.0.0:4434
@@ -438,8 +356,8 @@ sudo systemctl status tunelo-relay   # 确认 active (running)
 # 启动一个测试服务
 python3 -m http.server 3000
 
-# 建立隧道（指向你自己的 relay）
-tunelo port 3000 --relay example.com:4433
+# 建立隧道
+tunelo port 3000 --relay agent-tunnel.woa.com:4433
 ```
 
 看到类似输出就说明部署成功：
@@ -447,28 +365,29 @@ tunelo port 3000 --relay example.com:4433
 ```
 Tunnel is ready.
 
-Public URL:  https://calm-river-9012.example.com
+Public URL:  https://calm-river-9012.agent-tunnel.woa.com
 Forwarding:  http://localhost:3000
 ```
 
-在浏览器访问 `https://calm-river-9012.example.com` 验证。
+在浏览器访问 `https://calm-river-9012.agent-tunnel.woa.com` 验证。
 
 ---
 
 ### 日常运维
 
 ```bash
-# 查看实时日志
+# 查看 relay 日志
 sudo journalctl -u tunelo-relay -f
+
+# 查看 Caddy 日志
+sudo journalctl -u caddy -f
 
 # 重启服务
 sudo systemctl restart tunelo-relay
+sudo systemctl restart caddy
 
-# 更新二进制后重启
-sudo systemctl restart tunelo-relay
-
-# 手动续期证书（按提示添加 TXT 记录）
-sudo certbot renew
+# 更新证书后重载 Caddy
+sudo systemctl reload caddy
 ```
 
 ---
@@ -477,17 +396,17 @@ sudo certbot renew
 
 ```bash
 # QUIC 传输（默认）
-tunelo port 3000 --relay example.com:4433
+tunelo port 3000 --relay agent-tunnel.woa.com:4433
 
 # WebSocket 传输（UDP 被封锁时）
-tunelo port 3000 --transport ws --ws-relay wss://example.com:4434
+tunelo port 3000 --transport ws --ws-relay wss://agent-tunnel.woa.com:4434
 
 # 密码保护
-tunelo port 3000 --relay example.com:4433 --password
+tunelo port 3000 --relay agent-tunnel.woa.com:4433 --password
 
 # 文件服务
-tunelo serve . --relay example.com:4433
+tunelo serve . --relay agent-tunnel.woa.com:4433
 
 # 边运行命令边建隧道
-tunelo port 3000 --relay example.com:4433 -- pnpm dev
+tunelo port 3000 --relay agent-tunnel.woa.com:4433 -- pnpm dev
 ```
