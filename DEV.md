@@ -137,130 +137,133 @@ macOS 临时关闭防火墙：**系统设置 → 网络 → 防火墙 → 关闭
 
 ---
 
-## 生产部署：泛域名上线
+## 生产部署
 
-假设你已经有一台公网服务器（VPS）和一个域名（以 `example.com` 为例），以下是完整的上线流程。
+你需要：一台公网 VPS（Ubuntu/Debian）+ 一个自己的域名。以下用 `example.com` 代指，请全部替换为你的实际域名。
 
-### 架构总览
+### 架构
 
 ```
-              Cloudflare DNS (DNS only, 不开代理)
-                        │
-        ┌───────────────┼───────────────┐
-        ▼               ▼               ▼
-  example.com     *.example.com     UDP:4433
-        │               │               │
-   ┌─────────────────────────┐    ┌──────────┐
-   │    Nginx (80/443)       │    │  tunelo   │
-   │    TLS 终结             │    │  relay    │
-   │    Let's Encrypt 证书    │    │  (QUIC)   │
-   ├─────────┬───────────────┤    │  :4433    │
-   │ 主站    │ *.example.com │    └──────────┘
-   │ 落地页  │ proxy → :8080 │
-   └─────────┴───────┬───────┘
-                     ▼
-             ┌──────────────┐
-             │ tunelo relay │
-             │  HTTP :8080  │
-             │  QUIC :4433  │
-             │  WS   :4434  │
-             └──────────────┘
+浏览器
+  │ HTTPS
+  ▼
+Nginx (443)          tunelo relay (QUIC :4433, WS :4434)
+  │ TLS 终结               ▲
+  │ *.example.com           │ 客户端通过 QUIC/WS 连入
+  │ proxy_pass :8080        │
+  ▼                         │
+tunelo relay (HTTP :8080) ──┘
 ```
 
-**关键原理**：Nginx 负责 TLS 终结，将 `*.example.com` 的请求反代给 relay 的 HTTP 端口；relay 从 Host 头提取子域名（如 `calm-river-9012`）路由到对应隧道。
+Nginx 做 TLS 终结 + 泛域名反代；relay 从 Host 头提取子域名路由到对应隧道。
 
-### Step 1: 配置 Cloudflare DNS
+---
 
-在 Cloudflare 控制台为你的域名添加两条 DNS 记录：
+### Step 1: DNS 解析
 
-| 类型 | 名称 | 内容 | 代理状态 | TTL |
-|------|------|------|----------|-----|
-| A | `@` | `你的服务器IP` | **仅 DNS**（灰色云朵） | Auto |
-| A | `*` | `你的服务器IP` | **仅 DNS**（灰色云朵） | Auto |
+在域名管理后台（阿里云 / 腾讯云 / Namesilo / GoDaddy 等）添加两条 A 记录：
 
-> ⚠️ **必须选"仅 DNS"（灰色云朵），不能开"已代理"（橙色云朵）**：
-> - Cloudflare 免费版不支持泛域名代理
-> - TLS 需要在你的服务器上终结（不是 Cloudflare）
-> - QUIC (UDP:4433) 无法穿过 Cloudflare 代理
+| 类型 | 名称 | 值 |
+|------|------|-----|
+| A | `@` | 你的服务器 IP |
+| A | `*` | 你的服务器 IP |
 
-然后获取 Cloudflare API Token（用于 Let's Encrypt DNS-01 验证）：
+不需要开 CDN / 代理，直接解析到服务器 IP。
 
-1. Cloudflare 控制台 → **我的个人资料** → **API 令牌**
-2. 点击 **创建令牌**，使用 **编辑区域 DNS** 模板
-3. 权限：Zone → DNS → Edit，区域：选择你的域名
-4. 创建后**复制令牌**，下一步要用
-
-### Step 2: VPS 初始化
-
-SSH 登录服务器，安装基础软件并开放防火墙端口：
+验证：
 
 ```bash
-# 开放端口
+dig example.com +short        # 应返回你的 IP
+dig test.example.com +short   # 同上
+```
+
+---
+
+### Step 2: 服务器初始化
+
+SSH 登录 VPS：
+
+```bash
+# 防火墙放行
 sudo iptables -I INPUT 5 -p tcp --dport 80 -j ACCEPT
 sudo iptables -I INPUT 5 -p tcp --dport 443 -j ACCEPT
 sudo iptables -I INPUT 5 -p udp --dport 4433 -j ACCEPT
-sudo iptables -I INPUT 5 -p tcp --dport 4434 -j ACCEPT   # WebSocket 隧道
+sudo iptables -I INPUT 5 -p tcp --dport 4434 -j ACCEPT
 
-# 持久化规则
+# 持久化 iptables
 sudo apt-get install -y iptables-persistent
 sudo netfilter-persistent save
 
-# 安装 Nginx + Certbot
+# 安装 Nginx 和 Certbot
 sudo apt-get update
-sudo apt-get install -y nginx certbot python3-certbot-dns-cloudflare
+sudo apt-get install -y nginx certbot
 
 # 创建 tunelo 用户和目录
 sudo useradd --system --shell /usr/sbin/nologin tunelo || true
-sudo mkdir -p /opt/tunelo/bin /opt/tunelo/web /etc/tunelo
+sudo mkdir -p /opt/tunelo/bin /opt/tunelo/website
 ```
 
-> 如果是云厂商（AWS/Oracle/阿里云等），还需在控制台安全组里放行 80/TCP、443/TCP、4433/UDP、4434/TCP。
+> 云厂商（AWS / Oracle / 阿里云等）还需在控制台**安全组**里放行 80/TCP、443/TCP、4433/UDP、4434/TCP。
 
-### Step 3: 申请 Let's Encrypt 泛域名证书
+---
 
-泛域名证书必须用 **DNS-01 验证**（不能用 HTTP 验证），所以需要 Cloudflare API Token：
+### Step 3: 申请泛域名 SSL 证书
+
+泛域名证书必须用 DNS-01 验证。运行：
 
 ```bash
-# 保存 Cloudflare 凭证
-sudo mkdir -p /etc/letsencrypt
-sudo tee /etc/letsencrypt/cloudflare.ini > /dev/null <<EOF
-dns_cloudflare_api_token = 你的_CLOUDFLARE_API_TOKEN
-EOF
-sudo chmod 600 /etc/letsencrypt/cloudflare.ini
-
-# 申请泛域名证书
 sudo certbot certonly \
-    --dns-cloudflare \
-    --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
-    --dns-cloudflare-propagation-seconds 30 \
+    --manual \
+    --preferred-challenges dns \
     -d "example.com" \
     -d "*.example.com" \
-    --email admin@example.com \
-    --agree-tos \
-    --non-interactive
+    --email you@example.com \
+    --agree-tos
+```
 
-# 启用自动续期
+certbot 会提示你添加 TXT 记录：
+
+```
+Please deploy a DNS TXT record under the name:
+  _acme-challenge.example.com
+with the following value:
+  xXxXxXxXxXxXxXxXxXx
+```
+
+**操作**：
+
+1. **先不要按回车**，去域名后台添加 TXT 记录（名称 `_acme-challenge`，值为提示的那串字符）
+2. 等 1-5 分钟，验证生效：`dig TXT _acme-challenge.example.com +short`
+3. 确认有返回后，回到终端**按回车**
+4. certbot 可能会再提示一次（给 `*.example.com`），重复上述操作
+
+> 两条 `_acme-challenge` TXT 记录的值不同，大多数 DNS 服务商支持同名多条 TXT，都加上即可。
+
+签发成功后配置自动续期：
+
+```bash
 sudo systemctl enable certbot.timer
 sudo systemctl start certbot.timer
 
 # 续期后自动 reload Nginx
-sudo tee /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh > /dev/null <<'HOOK'
+sudo mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+cat << 'EOF' | sudo tee /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
 #!/bin/bash
 systemctl reload nginx
-HOOK
+EOF
 sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
 ```
 
-证书文件位置：
-- 证书链：`/etc/letsencrypt/live/example.com/fullchain.pem`
-- 私钥：`/etc/letsencrypt/live/example.com/privkey.pem`
+> 手动模式的证书续期时仍需手动加 TXT。如需全自动，可用 [acme.sh](https://github.com/acmesh-official/acme.sh)，支持几十种 DNS 服务商 API。
+
+---
 
 ### Step 4: 配置 Nginx
 
-创建 `/etc/nginx/sites-available/example.com`：
+创建配置文件 `/etc/nginx/sites-available/example.com`：
 
 ```nginx
-# ── HTTP → HTTPS 重定向 ─────────────────────────────────────────
+# HTTP → HTTPS 重定向
 server {
     listen 80;
     listen [::]:80;
@@ -269,13 +272,12 @@ server {
     location /.well-known/acme-challenge/ {
         root /var/www/html;
     }
-
     location / {
         return 301 https://$host$request_uri;
     }
 }
 
-# ── 主站：example.com ───────────────────────────────────────────
+# 主站
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
@@ -283,23 +285,19 @@ server {
 
     ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
-
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1d;
 
     add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
 
     root /opt/tunelo/website;
     index index.html;
-
     location / {
         try_files $uri $uri/ /index.html;
     }
 }
 
-# ── 隧道子域名：*.example.com → relay:8080 ──────────────────────
+# 隧道子域名 → relay
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
@@ -307,11 +305,8 @@ server {
 
     ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
-
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1d;
 
     add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
 
@@ -319,13 +314,12 @@ server {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
 
-        # 传递原始 Host 头（隧道路由的关键！）
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # WebSocket 透传支持
+        # WebSocket 透传
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
 
@@ -333,14 +327,14 @@ server {
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
 
-        # 关闭缓冲，支持流式传输
+        # 关闭缓冲
         proxy_buffering off;
         proxy_request_buffering off;
     }
 }
 ```
 
-启用配置：
+启用：
 
 ```bash
 sudo ln -sf /etc/nginx/sites-available/example.com /etc/nginx/sites-enabled/example.com
@@ -348,24 +342,53 @@ sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### Step 5: 部署 Relay 服务
+---
 
-**交叉编译**（在本地 macOS 上，目标为 Linux）：
+### Step 5: 编译并上传 tunelo
+
+在本地 macOS 交叉编译：
 
 ```bash
+# 先构建前端（编译时会嵌入二进制）
+cd web && pnpm install && pnpm build && cd ..
+
+# arm64 服务器：
 cargo build --release --target aarch64-unknown-linux-musl --bin tunelo
-# 或 x86_64：
+# x86_64 服务器：
 # cargo build --release --target x86_64-unknown-linux-musl --bin tunelo
 ```
 
-**上传到服务器**：
+上传：
 
 ```bash
 scp target/aarch64-unknown-linux-musl/release/tunelo your-vps:/tmp/tunelo
-ssh your-vps "sudo mv /tmp/tunelo /opt/tunelo/bin/tunelo && sudo chmod +x /opt/tunelo/bin/tunelo && sudo chown tunelo:tunelo /opt/tunelo/bin/tunelo"
+
+ssh your-vps "
+  sudo mv /tmp/tunelo /opt/tunelo/bin/tunelo
+  sudo chmod +x /opt/tunelo/bin/tunelo
+  sudo chown tunelo:tunelo /opt/tunelo/bin/tunelo
+"
 ```
 
-**创建 systemd 服务** `/etc/systemd/system/tunelo-relay.service`：
+如果有落地页网站，也一并上传：
+
+```bash
+cd website && pnpm install && pnpm build && cd ..
+scp -r website/dist/* your-vps:/tmp/tunelo-website/
+
+ssh your-vps "
+  sudo rm -rf /opt/tunelo/website/*
+  sudo cp -r /tmp/tunelo-website/* /opt/tunelo/website/
+  sudo chown -R tunelo:tunelo /opt/tunelo/website/
+  rm -rf /tmp/tunelo-website
+"
+```
+
+---
+
+### Step 6: 配置 systemd 服务
+
+在 VPS 上创建 `/etc/systemd/system/tunelo-relay.service`：
 
 ```ini
 [Unit]
@@ -386,7 +409,6 @@ Restart=always
 RestartSec=5
 Environment=RUST_LOG=tunelo=info,tunelo_relay=info
 
-# 安全加固
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
@@ -397,34 +419,30 @@ ReadWritePaths=/opt/tunelo
 WantedBy=multi-user.target
 ```
 
-启动服务：
+启动：
 
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable tunelo-relay
 sudo systemctl start tunelo-relay
-sudo systemctl status tunelo-relay
+sudo systemctl status tunelo-relay   # 确认 active (running)
 ```
 
-### Step 6: 客户端使用
+---
 
-部署完成后，任何人都可以用以下命令创建隧道：
+### Step 7: 验证
+
+在你本地电脑上：
 
 ```bash
-# QUIC 传输（默认，推荐）
-tunelo port 3000
+# 启动一个测试服务
+python3 -m http.server 3000
 
-# WebSocket 传输（UDP 被封锁时）
-tunelo port 3000 --transport ws --ws-relay wss://example.com:4434
-
-# 密码保护
-tunelo port 3000 --password
-
-# 文件服务
-tunelo serve .
+# 建立隧道（指向你自己的 relay）
+tunelo port 3000 --relay example.com:4433
 ```
 
-隧道建立后会输出：
+看到类似输出就说明部署成功：
 
 ```
 Tunnel is ready.
@@ -433,47 +451,43 @@ Public URL:  https://calm-river-9012.example.com
 Forwarding:  http://localhost:3000
 ```
 
-任何人在浏览器访问 `https://calm-river-9012.example.com` 即可访问你的本地服务。
+在浏览器访问 `https://calm-river-9012.example.com` 验证。
 
-### 一键部署
+---
 
-项目已提供部署脚本，修改 `deploy/04-deploy.sh` 中的 VPS 地址后可一键部署：
-
-```bash
-./deploy/04-deploy.sh
-```
-
-### 运维命令
+### 日常运维
 
 ```bash
 # 查看实时日志
-ssh your-vps "sudo journalctl -u tunelo-relay -f"
+sudo journalctl -u tunelo-relay -f
 
 # 重启服务
-ssh your-vps "sudo systemctl restart tunelo-relay"
+sudo systemctl restart tunelo-relay
 
-# 手动续期证书
-ssh your-vps "sudo certbot renew"
+# 更新二进制后重启
+sudo systemctl restart tunelo-relay
 
-# 代码更新后重新部署
-./deploy/04-deploy.sh
+# 手动续期证书（按提示添加 TXT 记录）
+sudo certbot renew
 ```
 
-### Docker 部署（可选）
+---
 
-也可以用 Docker 部署 relay：
+### 客户端使用
 
 ```bash
-docker run -d -p 8080:8080 -p 4433:4433/udp -p 4434:4434 \
-  tunelo/tunelo relay \
-  --domain example.com \
-  --ws-tunnel-addr 0.0.0.0:4434
+# QUIC 传输（默认）
+tunelo port 3000 --relay example.com:4433
+
+# WebSocket 传输（UDP 被封锁时）
+tunelo port 3000 --transport ws --ws-relay wss://example.com:4434
+
+# 密码保护
+tunelo port 3000 --relay example.com:4433 --password
+
+# 文件服务
+tunelo serve . --relay example.com:4433
+
+# 边运行命令边建隧道
+tunelo port 3000 --relay example.com:4433 -- pnpm dev
 ```
-
-或使用 docker-compose：
-
-```bash
-docker compose up -d
-```
-
-> ⚠️ Docker 方式仍需 Nginx 在宿主机做 TLS 终结和泛域名反代。
